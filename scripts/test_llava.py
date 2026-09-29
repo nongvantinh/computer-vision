@@ -36,7 +36,7 @@ def main() -> int:
 
     x = model.make_image_tensor(img, requires_grad=True)
     loss = model.target_loss(x, "What is the main object in this image?", "banana")
-    log.info("target_loss = %.4f", float(loss))
+    log.info("target_loss = %.4f", float(loss.detach()))
 
     grad = model.torch.autograd.grad(loss, x)[0]
     gmax = float(grad.abs().max())
