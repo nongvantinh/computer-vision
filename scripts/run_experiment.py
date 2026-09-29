@@ -36,6 +36,8 @@ def main() -> int:
                     help="override PGD steps (pilot; faster)")
     ap.add_argument("--epsilon", type=float, action="append", default=None,
                     help="override epsilon(s); repeatable (pilot)")
+    ap.add_argument("--defenses", default=None,
+                    help="comma-separated defense override, e.g. D0,jpeg90,jpeg75 (pilot)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     acfg = load_config(args.attack)
@@ -43,6 +45,8 @@ def main() -> int:
         acfg["steps"] = args.steps
     if args.epsilon:
         acfg["epsilon"] = args.epsilon
+    if args.defenses:
+        cfg["defenses"] = [d.strip() for d in args.defenses.split(",") if d.strip()]
     seed_everything(cfg["seed"])
 
     run_dir = Path(args.out)
