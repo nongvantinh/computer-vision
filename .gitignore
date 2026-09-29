@@ -1,0 +1,39 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.venv-exp
+
+# Data (large; ImageNet val is fetched on the cloud box)
+data/
+external/
+
+# LaTeX build artifacts (latexmk) — keep .tex/.bib and final .pdf
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.toc
+*.nav
+*.snm
+*.xdv
+*.synctex.gz
+
+# Experiment outputs (regenerable via `make experiments`)
+results/
+*.pt
+*.ckpt
+
+# OS / editor cruft
+.DS_Store

@@ -1,0 +1,19 @@
+# Targeted L-inf PGD (proposal §3.3). All parameters explicit and versioned.
+seed: 1234
+
+# L-inf budgets in [0,1] units. 4/255, 8/255, 16/255.
+epsilon:
+  - 0.0156862745   # 4/255
+  - 0.0313725490   # 8/255
+  - 0.0627450980   # 16/255
+
+# 200 PGD steps at 1/255 lets the attack traverse the full 16/255 ball ~12x,
+# ample for convergence; step_size = epsilon-independent per standard PGD practice.
+steps: 200
+step_size: 0.0039215686   # 1/255
+random_start: true
+
+# Attack-validation pilot (checkpoint 3) before the full run.
+validation:
+  n_images: 10
+  min_asr_to_proceed: 0.6   # attack must clear this on D0 before the full experiment

@@ -1,0 +1,34 @@
+# MVP experiment configuration (source of truth: docs/proposal/proposal.tex)
+seed: 1234
+
+model:
+  model_id: llava-hf/llava-1.5-7b-hf
+  device: cuda
+  dtype: float16
+  gradient_checkpointing: true
+
+dataset:
+  imagenet_val_dir: data/imagenet/val    # ImageFolder layout: val/<wnid>/*.JPEG
+  manifest: configs/dataset_200.json
+  class_index_cache: configs/imagenet_class_index.json
+  n_classes: 20
+  per_class: 10
+  image_size: 336
+
+# Defense conditions (proposal §3.6). D0 baseline, JPEG frontier, two real CDR tools.
+defenses:
+  - D0
+  - jpeg90
+  - jpeg75
+  - jpeg50
+  - icdr
+  - dangerzone
+
+# External tool commands (real tools; see docs/implementation/experiment-protocol.md)
+tools:
+  # {input}/{output} placeholders are required for ICDR
+  icdr_cmd: "java -jar external/ICDR/icdr.jar {input} {output}"
+  dangerzone_cmd: "dangerzone-cli"
+
+evaluation:
+  max_new_tokens: 16

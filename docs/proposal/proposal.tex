@@ -1,0 +1,366 @@
+\documentclass[11pt]{article}
+
+% --- Compile with: latexmk -xelatex proposal.tex ---
+\usepackage{fontspec}          % XeLaTeX: native UTF-8, Vietnamese-capable
+\setmainfont{Latin Modern Roman}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{microtype}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist{nosep, leftmargin=1.4em}
+\usepackage{xcolor}
+\usepackage[colorlinks=true, linkcolor=black, citecolor=blue!55!black,
+            urlcolor=blue!55!black]{hyperref}
+\usepackage[backend=biber, style=numeric-comp, sorting=none, url=true,
+            doi=false, isbn=false]{biblatex}
+\addbibresource{references.bib}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.1em}{0.5em}
+\titlespacing*{\subsection}{0pt}{0.8em}{0.35em}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\title{\vspace{-2.2em}\textbf{Content Disarm and Reconstruction as an
+Adversarial Defense for Vision-Language Models:\\
+An Empirical Audit of Deployed CDR Tools}}
+\author{Nông Văn Tình}
+\date{Advanced Computer Vision (ACV), Project Proposal \\ \today}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+% ======================================================================
+\section{Project Introduction}
+
+\subsection{Background / Scope}
+Vision-Language Models (VLMs) such as LLaVA~\cite{liu2023llava} couple a
+CLIP-style Vision Transformer~\cite{radford2021clip} to a language model. This
+visual channel is vulnerable to \emph{pixel-space adversarial perturbations}:
+a small, bounded change to the image, optimized end-to-end through the model,
+can steer the generated text~\cite{qi2024visualaaai,univperturb2024}. A common,
+model-agnostic defense family is \emph{input transformation}: re-encoding or
+reconstructing the image before it reaches the encoder~\cite{guo2018countering}.
+
+Independently, the security industry deploys \emph{Content Disarm and
+Reconstruction (CDR)}: parse a file, discard non-conforming or active structure
+(metadata, embedded objects, anomalous chunks), and rebuild a clean file from
+validated content. Real, reproducible open-source CDR tools already exist.
+\emph{ICDR}~\cite{icdr,openimagecdr} has a published pipeline of
+\texttt{transCode} (re-encode, strip all metadata) $\rightarrow$ \texttt{resize}
+(97\% compress/restore) $\rightarrow$ \texttt{AdvFilter} (Gaussian blur then
+sharpen). \emph{Dangerzone}~\cite{dangerzone} renders a document to
+raw RGB pixels and rebuilds a clean file, discarding \emph{all} non-pixel
+structure. This project evaluates these existing implementations.
+
+\textbf{Scope.} This is a computer-vision robustness study: we audit whether
+deployed image-CDR tools, applied as a pre-encoder defense, reduce the success of
+targeted adversarial images against a VLM while preserving legitimate visual
+content, and whether they do better than trivial JPEG re-encoding. The methods
+are core CV: adversarial optimization through a ViT-based encoder, frequency-domain
+analysis of what reconstruction removes, image-fidelity measurement, and
+vision-encoder robustness evaluation.
+
+\subsection{Problem Statement / Motivation}
+A named security framework, SAF-M-49~\cite{safm49}, \emph{recommends} multimedia
+CDR as a mitigation against multimodal prompt injection, but it provides no
+empirical validation (it lists efficacy and latency measurement as future work).
+Meanwhile, existing CDR-for-AI research sanitizes \emph{model
+weight files}~\cite{aimodelcdr,ztaicdr}, not input images, and image-CDR research
+targets \emph{malware / steganography removal}~\cite{openimagecdr}, not
+adversarial robustness. Purpose-built adversarial \emph{purification} for VLMs
+does exist, but it is bespoke machine learning (diffusion or latent-space
+purifiers)~\cite{nie2022diffpure,clipure2025,codefend2025}, not the deterministic
+security tools practitioners actually deploy. This leaves a concrete, testable
+question: \emph{does a deployed CDR tool, recommended for exactly this
+purpose, actually blunt adversarial images on a VLM, and is it worth more than a
+one-line JPEG call?} My professional background in CDR motivates a faithful setup
+and a mechanistic reading of \emph{which} disarming operation carries any effect.
+
+% ======================================================================
+\section{Related Work / Literature Survey}
+We separate seven categories to avoid conflation.
+\textbf{(1)~CDR on model files/weights}~\cite{aimodelcdr,ztaicdr}: different
+surface. \textbf{(2)~CDR on input images}~\cite{icdr,openimagecdr,dangerzone}:
+real tools, but evaluated only for malware/steganography, never adversarial
+robustness. \textbf{(3)~Conventional transform
+defenses}~\cite{guo2018countering,shin2017jpegresistant}: single-operation
+(mostly JPEG), classifier-era. \textbf{(4)~Purification defenses for
+VLMs}~\cite{nie2022diffpure,clipure2025,codefend2025}: numerous but bespoke ML,
+not deployed security tools. \textbf{(5)~Adversarial attacks on
+VLMs}~\cite{qi2024visualaaai,univperturb2024}: supply our attack methodology.
+\textbf{(6)~Typographic / prompt injection}~\cite{scenetap2024,jailbreaksurvey2024}:
+out of MVP scope (see \S5). \textbf{(7)~Robust-evaluation
+methodology}~\cite{athalye2018obfuscated,tramer2020adaptive,carlini2019evaluating}:
+governs our adaptive-attack and statistics choices.
+
+\noindent\textbf{Positioned gap (narrow, supported).} We are not aware of any
+empirical evaluation of \emph{deployed image-CDR tools} (ICDR, Dangerzone) as a
+pre-encoder adversarial defense for VLMs, nor of a test of whether they provide
+robustness \emph{beyond plain JPEG}. We make no ``first/novel'' claim about CDR as
+a concept: SAF-M-49 already recommends it, and the contribution is the missing audit.
+
+% ======================================================================
+\section{Project Content Outline}
+
+\subsection{Core Idea}
+Insert a deployed CDR tool as a pre-encoder stage,
+\texttt{image $\rightarrow$ CDR $\rightarrow$ VLM}, and measure targeted attack
+success and clean-task utility against two references: no defense, and a JPEG
+quality sweep that traces the security--utility frontier. Then ask whether CDR
+lies beyond that frontier, and \emph{why}.
+
+\subsection{Research Questions}
+\begin{itemize}
+\item \textbf{RQ1.} Does a deployed CDR tool reduce the targeted attack success
+      rate of adversarial images on a VLM while preserving clean VQA accuracy?
+\item \textbf{RQ2.} Does CDR provide robustness \emph{beyond} the JPEG
+      quality-sweep frontier at comparable utility cost?
+\item \textbf{RQ3 (mechanism).} Is any robustness explained by removal of
+      high-frequency perturbation energy, i.e.\ does the causal chain
+      \emph{CDR operation $\to$ perturbation-energy removal $\to$ attack failure}
+      hold?
+\item \textbf{RQ4 (extension).} Can a CDR-aware adaptive attacker recover attack
+      success, indicating the non-adaptive result overstates robustness?
+\end{itemize}
+
+\subsection{Threat Model}
+\begin{itemize}
+\item \textbf{Attacker.} White-box on the target VLM (following
+      Qi et al.~\cite{qi2024visualaaai}); may perturb the input image only, under
+      an $L_\infty$ budget $\varepsilon$; optimizes teacher-forcing cross-entropy
+      from raw pixels to LM logits toward a predetermined target answer.
+\item \textbf{Knowledge (two settings).} \emph{Defense-unaware} (MVP: attack
+      then sanitize) and \emph{defense-aware} (Extension: attack \emph{through}
+      the CDR pipeline).
+\item \textbf{Success criterion (single, primary).} \emph{Targeted VQA-answer
+      flip}: for a controlled single-object question with known ground truth, the
+      model outputs the attacker's predetermined incorrect label. No
+      harmful-content generation.
+\item \textbf{Defender.} Applies one sanitizer before the encoder; compared with
+      no defense and with JPEG.
+\end{itemize}
+
+\subsection{Dataset}
+200 images from the ImageNet-1k validation
+set~\cite{deng2009imagenet}: 20 classes $\times$ 10 images (fixed seed list,
+IDs logged). Each image gets one controlled prompt (``What is the main object?
+Answer with a single label.'') with the ImageNet class as ground truth and one
+\emph{predetermined} target label (fixed class-to-target map). Images are resized
+to the model's native input (336\,px for LLaVA). The \emph{same} images pass
+through \emph{every} defense (paired design). Attacks are optimized per image on
+the test image itself, which is standard for per-example adversarial attacks.
+Because no model is trained, there is no train/test leakage, only per-image
+white-box optimization. Clean-utility is measured on the unattacked images under
+each defense.
+
+\subsection{Models}
+\textbf{Primary: LLaVA-1.5-7B} (the Qi-et-al.~lineage, maximizing comparability
+and reproducibility). No CLIP surrogate is used; the attack runs end-to-end on the
+target model. \textbf{Compute budget:} a single 24\,GB GPU; white-box PGD through
+7B parameters uses fp16 and gradient checkpointing. \textbf{Fallback} for
+$<16$\,GB: Qwen2-VL-2B~\cite{wang2024qwen2vl} as primary. A second model is used
+\emph{only} in the extension to test generalization, not in the MVP.
+
+\subsection{Experimental Design}
+\textbf{Defenses (minimal, principled):}
+\texttt{D0} none; \texttt{D1--D3} JPEG at quality $\{90,75,50\}$ (traces the
+frontier); \texttt{D4} ICDR (\texttt{final\_fun}: transCode$\to$resize$\to$AdvFilter)
+\cite{icdr}; \texttt{D5} Dangerzone (full render-and-rebuild)~\cite{dangerzone}.
+\textbf{Ablation (conditional).} \emph{Only if} ICDR (\texttt{D4}) differs
+significantly from the JPEG frontier do we decompose its published operations
+(transCode / resize / AdvFilter / the alternate LSB-clean and gamma steps) to
+localize the effect. This keeps the matrix small unless the data justify
+expansion.
+\textbf{Comparison protocol.} Plot every defense in
+(clean-accuracy-retained, robust-accuracy-under-attack) space; JPEG
+$\{90,75,50\}$ traces the frontier; CDR tools appear as points. RQ2 asks whether
+CDR lies \emph{on} or \emph{beyond} that frontier. Fidelity metrics are reported
+as descriptive covariates, not as a matching axis.
+
+\subsection{Step-by-Step To-Do Plan}
+\begin{enumerate}
+\item Load LLaVA-1.5-7B; wrap it as a differentiable pixel$\to$logits function.
+\item Integrate deployed defenses: JPEG (Pillow), ICDR~\cite{icdr},
+      Dangerzone~\cite{dangerzone}; verify each runs deterministically (log
+      versions/configs).
+\item Build the 200-image ImageNet VQA benchmark + fixed target-label map.
+\item Implement the targeted PGD attack (teacher forcing to target answer),
+      $\varepsilon\in\{4,8,16\}/255$; validate attack strength on \texttt{D0}.
+\item Run the paired ladder: attack $\times$ \{\texttt{D0--D5}\} on the primary
+      model. \textbf{$\leftarrow$ MVP result.}
+\item Mechanistic analysis (RQ3): residual perturbation energy and its frequency
+      spectrum before/after each defense.
+\item Statistics: McNemar per defense pair, bootstrap CIs, Holm correction.
+\item \textbf{Extension:} defense-aware adaptive attack (\S3.6, \S6); optional
+      second model for generalization.
+\item Aggregate, plot the frontier, build the demo, write up.
+\end{enumerate}
+
+% ======================================================================
+\section{Results}
+
+\subsection{Expected Outcomes}
+A security--utility frontier that places deployed CDR tools relative to JPEG and
+to no defense, on one VLM with a targeted white-box attack; a mechanistic test of
+\emph{why} any effect occurs; an optional adaptive-attack check; and a
+reproducible codebase and demo.
+
+\subsection{Evaluation Metrics (each tied to one RQ)}
+\begin{tabularx}{\textwidth}{@{}l Y@{}}
+\toprule
+\textbf{Metric} & \textbf{Research question it answers} \\
+\midrule
+Targeted ASR ($\pm$95\% bootstrap CI) & RQ1, RQ2, RQ4: does the defense stop the attack? \\
+Clean VQA accuracy under each defense & RQ1: does the defense preserve utility? \\
+Security--utility frontier plot & RQ2: does CDR beat JPEG at equal utility cost? \\
+Residual perturbation energy + FFT spectrum & RQ3: does robustness come from removing high-freq perturbation? \\
+PSNR / SSIM / LPIPS (descriptive) & context for the frontier (not a matching axis) \\
+CDR/JPEG latency & practical cost of deployment \\
+\bottomrule
+\end{tabularx}
+
+\subsection{Experimental Evaluation}
+Paired design (identical images through all defenses) $\Rightarrow$
+\textbf{McNemar's test} for each pairwise ASR comparison; \textbf{95\% bootstrap
+CIs} on ASR and clean accuracy; \textbf{Holm--Bonferroni} across the small set of
+comparisons; effect size reported as the ASR difference. Attack validity is
+checked per Carlini et al.~\cite{carlini2019evaluating} (attack must reach high
+ASR on \texttt{D0} before any defense claim).
+
+\subsection{Visual Demo}
+Panels of (clean $\to$ correct answer), (adversarial $\to$ target answer),
+(adversarial $\to$ CDR $\to$ recovered or not), each annotated with its FFT
+spectrum and the residual-energy readout; plus the frontier plot with the CDR
+points marked.
+
+\subsection{Hypotheses and Falsification}
+\begin{itemize}
+\item \textbf{H1:} CDR reduces targeted ASR vs.\ \texttt{D0}.
+      \emph{Falsified if} ASR under \texttt{D4/D5} is within the CI of \texttt{D0}.
+\item \textbf{H2:} CDR lies beyond the JPEG frontier for $\geq 1$ operating point.
+      \emph{Falsified if} CDR points sit on/inside the JPEG curve.
+\item \textbf{H3:} Robustness tracks high-frequency perturbation removal.
+      \emph{Falsified if} defenses that remove comparable high-freq energy give
+      divergent ASR, or vice versa.
+\item \textbf{H4:} Aggressive CDR (Dangerzone) costs measurable clean accuracy.
+      \emph{Falsified if} clean accuracy under \texttt{D5} is within \texttt{D0}'s CI.
+\item \textbf{H5:} A defense-aware attack recovers substantial ASR.
+      \emph{Falsified if} adaptive ASR stays near non-adaptive defended ASR.
+\end{itemize}
+
+% ======================================================================
+\section{Scope and Limitations}
+This project is an audit, not a new defense method. The MVP studies
+\emph{one} attack family (pixel-space perturbation), \emph{one} primary VLM, and
+\emph{deployed} CDR tools. Commercial CDR (e.g.\ MetaDefender, Votiro) is
+proprietary and not bit-reproducible, so it is out of scope.
+Success is a targeted-VQA proxy for output manipulation, not harmful-content
+generation. Attacks are per-image white-box; results bound the white-box case,
+the strongest for the defender to survive. Typographic and visual
+prompt-injection is deliberately excluded from the MVP and left as an optional
+contrast experiment. Rendered text is legitimate visible content, so CDR is
+expected \emph{not} to remove it, and Dangerzone's OCR layer could even
+re-inject it. We would only spot-check this, not build the project on it.
+
+% ======================================================================
+\section{Risks and Fallbacks}
+\begin{tabularx}{\textwidth}{@{}Y Y@{}}
+\toprule
+\textbf{Risk} & \textbf{Fallback} \\
+\midrule
+White-box PGD through 7B exceeds GPU memory &
+  Gradient checkpointing + fp16; else Qwen2-VL-2B as primary. \\
+ICDR/Dangerzone hard to script in the pipeline &
+  Run them as external processes on saved images (batch), then load; both are
+  open-source and file-based. \\
+CDR indistinguishable from JPEG &
+  That \emph{is} the RQ2 answer (H2 falsified), a useful negative result for
+  practitioners. \\
+Adaptive attack (BPDA) too heavy through 7B $+$ CDR &
+  Extension only; simpler fallback is a defense-aware transfer attack through a
+  differentiable CDR approximation (differentiable-JPEG + straight-through for
+  non-differentiable steps). \\
+Attack too weak on \texttt{D0} &
+  Increase $\varepsilon$/iterations until high ASR on \texttt{D0} before any
+  defense claim~\cite{carlini2019evaluating}. \\
+Time runs out &
+  MVP (RQ1+RQ2, one model, one attack, 200 images) stands alone. \\
+\bottomrule
+\end{tabularx}
+
+% ======================================================================
+\section{Timeline}
+\begin{tabularx}{\textwidth}{@{}l Y@{}}
+\toprule
+\textbf{Week} & \textbf{Deliverable} \\
+\midrule
+W1 & Differentiable VLM wrapper; integrate JPEG/ICDR/Dangerzone; benchmark built. \\
+W2 & Targeted PGD implemented and validated on \texttt{D0}; paired ladder run. \textbf{$\leftarrow$ MVP result.} \\
+W3 & Mechanistic analysis (residual energy, FFT) + statistics (McNemar, CIs, Holm) + frontier plot. \\
+W4 & \emph{Extension (optional):} adaptive attack and/or second-model generalization; demo; write-up. \\
+\bottomrule
+\end{tabularx}
+
+% ======================================================================
+\section*{Appendix A: Conservative Novelty Statement}
+\addcontentsline{toc}{section}{Appendix A: Novelty Statement}
+Image Content Disarm and Reconstruction is an existing, deployed
+file-sanitization technique, with open-source implementations such as
+ICDR~\cite{icdr,openimagecdr} and Dangerzone~\cite{dangerzone}, and security
+guidance already recommends multimedia CDR against multimodal prompt
+injection~\cite{safm49}. However, that recommendation is unvalidated, existing
+CDR-for-AI research sanitizes model weight files rather than model
+inputs~\cite{aimodelcdr,ztaicdr}, and purpose-built adversarial purification for
+VLMs is bespoke machine learning rather than a deployed security
+tool~\cite{nie2022diffpure,clipure2025}. We therefore do not claim CDR is a novel
+idea. Our contribution is an empirical audit: we are not aware of prior work that
+evaluates deployed image-CDR tools as a pre-encoder adversarial defense for
+vision-language models, or that tests whether they provide robustness beyond
+plain JPEG re-encoding, with a controlled targeted white-box attack, a
+security--utility frontier comparison, a mechanistic frequency-domain analysis,
+and an adaptive-attack robustness check.
+
+% ======================================================================
+\section*{Appendix B: Experimental Matrix}
+\addcontentsline{toc}{section}{Appendix B: Experimental Matrix}
+\begin{tabularx}{\textwidth}{@{}Y l Y@{}}
+\toprule
+\textbf{Attack} & \textbf{Defenses / Model} & \textbf{Primary metrics} \\
+\midrule
+Pixel-space targeted PGD ($L_\infty$, $\varepsilon\in\{4,8,16\}/255$),
+white-box on the VLM~\cite{qi2024visualaaai}
+  & \texttt{D0} none; \texttt{D1--D3} JPEG$\{90,75,50\}$; \texttt{D4} ICDR;
+    \texttt{D5} Dangerzone. Model: LLaVA-1.5-7B.
+  & Targeted ASR ($\pm$CI); clean VQA accuracy; residual perturbation energy +
+    FFT; PSNR/SSIM/LPIPS; latency \\
+\addlinespace
+Adaptive (defense-aware) \emph{[Extension]}
+  & \texttt{D4/D5}; LLaVA-1.5-7B ($+$ Qwen2-VL-2B for generalization)
+  & Adaptive ASR vs.\ non-adaptive defended ASR \\
+\bottomrule
+\end{tabularx}
+
+% ======================================================================
+\section*{Appendix C: MVP vs.\ Extension}
+\addcontentsline{toc}{section}{Appendix C: MVP vs. Extension}
+\textbf{MVP (must implement; a complete result on its own):} differentiable
+LLaVA-1.5-7B wrapper; integrated deployed defenses (JPEG sweep, ICDR,
+Dangerzone); 200-image ImageNet VQA benchmark; targeted white-box PGD validated
+on \texttt{D0}; paired ladder \texttt{D0--D5}; security--utility frontier;
+mechanistic residual-energy/FFT analysis; paired statistics; tables, frontier
+plot, and demo. Answers RQ1--RQ3 and remains interesting even if CDR $=$ JPEG.
+
+\smallskip
+\noindent\textbf{Extension (optional):} defense-aware adaptive
+attack~\cite{athalye2018obfuscated} testing for a false sense of security (RQ4);
+generalization to a second VLM; a small typographic-injection contrast check.
+
+\printbibliography[title={References}]
+
+\end{document}
