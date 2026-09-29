@@ -42,8 +42,10 @@ env.update({"HF_HOME": f"{DRIVE_DIR}/hf_cache", "MPLBACKEND": "Agg",
             "PYTHONUNBUFFERED": "1",
             "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"})
 
-# 3. light deps (torch/numpy already present on Colab)
-sh("pip -q install transformers accelerate scipy matplotlib pyyaml pillow", check=True)
+# 3. light deps (torch/numpy already present on Colab). bitsandbytes enables the
+#    4-bit load that fits LLaVA-1.5-7B + the backward pass on a 16 GB T4.
+sh("pip -q install transformers accelerate bitsandbytes scipy matplotlib pyyaml pillow",
+   check=True)
 
 # 4. ImageNet subset lives on Drive; expose it where the config expects it
 val_link = f"{PROJECT}/data/imagenet/val"

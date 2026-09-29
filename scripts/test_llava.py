@@ -14,13 +14,19 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.models.llava import LlavaWrapper, LlavaConfig  # noqa: E402
+from src.utils.config import load_config  # noqa: E402
 from src.utils.logging import get_logger  # noqa: E402
 
 log = get_logger("checkpoint1")
 
 
 def main() -> int:
-    model = LlavaWrapper(LlavaConfig())
+    # mirror the real run's model settings (dtype, 4-bit) from the experiment config
+    m = load_config("configs/experiment.yaml")["model"]
+    model = LlavaWrapper(LlavaConfig(
+        model_id=m["model_id"], device=m["device"], dtype=m["dtype"],
+        gradient_checkpointing=m.get("gradient_checkpointing", True),
+        load_in_4bit=m.get("load_in_4bit", False)))
     log.info("model loaded: %s", model.cfg.model_id)
 
     img = np.random.default_rng(0).random((336, 336, 3)).astype(np.float32)

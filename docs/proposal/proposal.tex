@@ -262,7 +262,10 @@ This project is an audit, not a new defense method. The MVP studies
 proprietary and not bit-reproducible, so it is out of scope.
 Success is a targeted-VQA proxy for output manipulation, not harmful-content
 generation. Attacks are per-image white-box; results bound the white-box case,
-the strongest for the defender to survive. Typographic and visual
+the strongest for the defender to survive. On the available 16\,GB GPU the model
+is loaded in 4-bit (NF4) rather than fp16, since the fp16 weights leave no room
+for the input-gradient backward pass; the attack is still white-box, end-to-end
+through the quantized model. A fp16 run on a $\geq$24\,GB GPU is a stretch goal. Typographic and visual
 prompt-injection is deliberately excluded from the MVP and left as an optional
 contrast experiment. Rendered text is legitimate visible content, so CDR is
 expected \emph{not} to remove it, and Dangerzone's OCR layer could even

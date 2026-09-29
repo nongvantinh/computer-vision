@@ -6,6 +6,7 @@ model:
   device: cuda
   dtype: float16
   gradient_checkpointing: true
+  load_in_4bit: true      # NF4 quantization to fit a 16 GB GPU (free-tier T4)
 
 dataset:
   imagenet_val_dir: data/imagenet/val    # ImageFolder layout: val/<wnid>/*.JPEG

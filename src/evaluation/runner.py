@@ -32,7 +32,8 @@ def build_model(cfg: dict):
     m = cfg["model"]
     return LlavaWrapper(LlavaConfig(
         model_id=m["model_id"], device=m["device"], dtype=m["dtype"],
-        gradient_checkpointing=m.get("gradient_checkpointing", True)))
+        gradient_checkpointing=m.get("gradient_checkpointing", True),
+        load_in_4bit=m.get("load_in_4bit", False)))
 
 
 def build_defenses(cfg: dict) -> dict:

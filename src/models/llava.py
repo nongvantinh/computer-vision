@@ -24,8 +24,9 @@ IMAGE_SIZE = 336
 class LlavaConfig:
     model_id: str = "llava-hf/llava-1.5-7b-hf"
     device: str = "cuda"
-    dtype: str = "float16"
+    dtype: str = "float16"          # compute dtype
     gradient_checkpointing: bool = True
+    load_in_4bit: bool = False      # NF4 quantization to fit a 16 GB GPU (e.g. T4)
 
 
 class LlavaWrapper:
@@ -37,12 +38,25 @@ class LlavaWrapper:
         self.torch = torch
         dtype = getattr(torch, self.cfg.dtype)
         self.processor = AutoProcessor.from_pretrained(self.cfg.model_id)
+
+        load_kwargs = dict(torch_dtype=dtype, low_cpu_mem_usage=True)
+        if self.cfg.load_in_4bit:
+            from transformers import BitsAndBytesConfig
+            load_kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True, bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=dtype, bnb_4bit_use_double_quant=True)
+            load_kwargs["device_map"] = {"": 0}   # bitsandbytes places the model
         self.model = LlavaForConditionalGeneration.from_pretrained(
-            self.cfg.model_id, torch_dtype=dtype, low_cpu_mem_usage=True)
-        self.model.to(self.cfg.device).eval()
+            self.cfg.model_id, **load_kwargs)
+        if not self.cfg.load_in_4bit:
+            self.model.to(self.cfg.device)
+        self.model.eval()
         self.model.requires_grad_(False)          # freeze weights; grad -> input only
         if self.cfg.gradient_checkpointing:
-            self.model.gradient_checkpointing_enable()
+            # non-reentrant: the only tensor needing grad is the input image, not any
+            # parameter, which reentrant checkpointing does not support.
+            self.model.gradient_checkpointing_enable(
+                gradient_checkpointing_kwargs={"use_reentrant": False})
         self.dtype = dtype
         self.device = self.cfg.device
         self._mean = torch.tensor(CLIP_MEAN, device=self.device).view(1, 3, 1, 1)
