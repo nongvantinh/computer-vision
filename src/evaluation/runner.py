@@ -1,10 +1,17 @@
 """Orchestration: resumable, job-idempotent, time-budgeted (Colab-friendly).
 
-Each unit of work writes its own result file and is skipped if that file exists,
-so a session killed by a Colab usage limit resumes by re-running only unfinished
-jobs. Derived files (rows.jsonl, clean.jsonl, accuracy) are rebuilt by
-`aggregate()` from the per-job files, so a new account that restored only the
-light `jobs/` tree can reconstruct everything.
+Metric design (revised after the pilot): a generic VLM will not emit fine-grained
+ImageNet class names ("tench", "Shih-Tzu") for a clean image, so accuracy against
+the ImageNet label is meaningless. Instead we use the model's OWN clean answer as
+the reference:
+  - targeted ASR: the (defended) adversarial answer contains the target label.
+  - preserved:    a defense on the CLEAN image keeps the model's clean answer.
+  - restored:     a defense on the ADVERSARIAL image brings the answer back to the
+                  clean answer (the defense undid the attack).
+This is label-free and robust to the model's phrasing.
+
+Each unit writes its own result file and is skipped if it exists, so a session
+killed by a Colab usage limit resumes by re-running only unfinished jobs.
 """
 from __future__ import annotations
 
@@ -21,8 +28,7 @@ from ..analysis.perturbation import analyze_defense_on_perturbation
 from ..utils.resume import (atomic_write_json, read_json, clean_job_path,
                             adv_job_path, is_done, sanitize_id)
 from ..utils.logging import get_logger
-from .predict import predict
-from .metrics import accuracy
+from .metrics import normalize_answer, contains_target
 
 log = get_logger("runner")
 
@@ -58,29 +64,38 @@ def _deadline_passed(deadline: float | None) -> bool:
     return deadline is not None and time.time() >= deadline
 
 
+def _samples(ds: ImageNetVQA, limit: int | None):
+    for i, s in enumerate(ds):
+        if limit is not None and i >= limit:
+            return
+        yield s
+
+
 def run_clean(model, ds: ImageNetVQA, defenses: dict, run_dir: Path,
               image_size: int = 336, max_new_tokens: int = 16,
-              deadline: float | None = None) -> int:
-    """Clean accuracy under each defense. One job file per image; resumable."""
+              deadline: float | None = None, limit: int | None = None) -> int:
+    """Per image: model's clean answer is the reference; measure preservation."""
     run_dir = Path(run_dir)
     done = new = 0
-    for s in ds:
+    for s in _samples(ds, limit):
         jp = clean_job_path(run_dir, s.image_id)
         if is_done(jp):
             done += 1
             continue
         if _deadline_passed(deadline):
-            log.info("clean: time budget reached, stopping (%d done this session)", new)
+            log.info("clean: time budget reached (%d new)", new)
             break
         img = ds.load_image(s, size=image_size)
-        rec = {"image_id": s.image_id, "gt": s.class_name, "defenses": {}}
+        ref = normalize_answer(model.generate(img, ds.prompt, max_new_tokens))
+        rec = {"image_id": s.image_id, "gt": s.class_name,
+               "clean_answer": ref, "defenses": {}}
         for dname, defense in defenses.items():
-            dimg = defense.sanitize(img).image
-            raw, pred = predict(model, dimg, ds.prompt, ds.class_names, max_new_tokens)
-            rec["defenses"][dname] = {"prediction": pred, "raw": raw}
+            ans = model.generate(defense.sanitize(img).image, ds.prompt, max_new_tokens)
+            rec["defenses"][dname] = {"answer": ans,
+                                      "preserved": int(normalize_answer(ans) == ref)}
         atomic_write_json(jp, rec)
         new += 1
-    log.info("clean: %d already done, %d new this session", done, new)
+    log.info("clean: %d done, %d new", done, new)
     return new
 
 
@@ -88,48 +103,49 @@ def run_full(model, ds: ImageNetVQA, defenses: dict, run_dir: Path,
              epsilons: list[float], pgd_steps: int, pgd_step_size: float,
              pgd_random_start: bool, seed: int, image_size: int = 336,
              max_new_tokens: int = 16, save_images: bool = True,
-             deadline: float | None = None) -> int:
-    """Attack (defense-unaware) then evaluate every defense. One job file per
+             deadline: float | None = None, limit: int | None = None) -> int:
+    """Attack (defense-unaware) then evaluate every defense. One job per
     (image, epsilon); resumable and time-budgeted."""
     run_dir = Path(run_dir)
     img_dir = run_dir / "examples"
     done = new = 0
-    for s in ds:
-        clean = None
+    for s in _samples(ds, limit):
+        clean = ref = None
         for eps in epsilons:
             jp = adv_job_path(run_dir, s.image_id, eps)
             if is_done(jp):
                 done += 1
                 continue
             if _deadline_passed(deadline):
-                log.info("attack: time budget reached, stopping (%d new this session)", new)
+                log.info("attack: time budget reached (%d new)", new)
                 return new
             if clean is None:
                 clean = ds.load_image(s, size=image_size)
+                ref = normalize_answer(model.generate(clean, ds.prompt, max_new_tokens))
             res = targeted_pgd(
                 model, clean, ds.prompt, s.target_class_name,
                 PGDConfig(epsilon=eps, steps=pgd_steps, step_size=pgd_step_size,
                           random_start=pgd_random_start, seed=seed))
             adv = res.adv_image
-            _, pred_d0 = predict(model, adv, ds.prompt, ds.class_names, max_new_tokens)
             rec = {"image_id": s.image_id, "class": s.class_name,
                    "target": s.target_class_name, "epsilon": eps,
-                   "attack_success_D0": int(pred_d0 == s.target_class_name),
-                   "linf": res.linf, "model": model.cfg.model_id, "defenses": {}}
+                   "clean_answer": ref, "linf": res.linf,
+                   "model": model.cfg.model_id, "defenses": {}}
             for dname, defense in defenses.items():
-                dadv = defense.sanitize(adv).image
-                raw, pred = predict(model, dadv, ds.prompt, ds.class_names, max_new_tokens)
-                mech = analyze_defense_on_perturbation(clean, adv, dadv)
+                ans = model.generate(defense.sanitize(adv).image, ds.prompt, max_new_tokens)
+                mech = analyze_defense_on_perturbation(
+                    clean, adv, defense.sanitize(adv).image)
                 rec["defenses"][dname] = {
-                    "prediction": pred, "raw": raw,
-                    "target_success": int(pred == s.target_class_name),
-                    "gt_recovered": int(pred == s.class_name),
+                    "answer": ans,
+                    "target_success": int(contains_target(ans, s.target_class_name)),
+                    "restored": int(normalize_answer(ans) == ref),
                     "mechanism": mech}
+            rec["attack_success_D0"] = rec["defenses"].get("D0", {}).get("target_success", 0)
             atomic_write_json(jp, rec)
             new += 1
             if save_images:
                 _save_example(img_dir, s.image_id, eps, clean, adv)
-    log.info("attack: %d already done, %d new this session", done, new)
+    log.info("attack: %d done, %d new", done, new)
     return new
 
 
@@ -143,16 +159,12 @@ def _save_example(img_dir: Path, image_id: str, eps: float,
     array_to_pil(adv).save(img_dir / f"{stem}_adv.png")
 
 
-# --------------------------------------------------------------------------- #
-# Aggregate per-job files into the derived files the analysis step reads.
-# Safe to call repeatedly; rebuilt from jobs/ so it works after a partial restore.
-# --------------------------------------------------------------------------- #
 def aggregate(run_dir: Path, defense_names: list[str]) -> dict:
+    """Rebuild derived files (rows.jsonl, preservation, perturbation) from jobs/."""
     run_dir = Path(run_dir)
     clean_dir = run_dir / "jobs" / "clean"
     adv_dir = run_dir / "jobs" / "adv"
 
-    # clean -> clean.jsonl + accuracy
     clean_rows = []
     for jp in sorted(clean_dir.glob("*.json")):
         rec = read_json(jp)
@@ -160,17 +172,16 @@ def aggregate(run_dir: Path, defense_names: list[str]) -> dict:
             continue
         for dname, r in rec["defenses"].items():
             clean_rows.append({"image_id": rec["image_id"], "defense": dname,
-                               "condition": "clean", "gt": rec["gt"],
-                               "prediction": r["prediction"], "raw": r["raw"]})
+                               "answer": r["answer"], "preserved": r["preserved"]})
     _write_jsonl(run_dir / "clean" / "clean.jsonl", clean_rows)
-    acc = {}
+    preservation = {}
     for dname in defense_names:
-        sub = [r for r in clean_rows if r["defense"] == dname]
+        sub = [r["preserved"] for r in clean_rows if r["defense"] == dname]
         if sub:
-            acc[dname] = accuracy([r["prediction"] for r in sub], [r["gt"] for r in sub])
-    atomic_write_json(run_dir / "metrics" / "clean_accuracy.json", acc)
+            preservation[dname] = sum(sub) / len(sub)
+    # keep the filename analysis reads; semantics = clean-answer preservation
+    atomic_write_json(run_dir / "metrics" / "clean_accuracy.json", preservation)
 
-    # adv -> rows.jsonl + perturbation.jsonl
     rows, mech = [], []
     for jp in sorted(adv_dir.glob("*.json")):
         rec = read_json(jp)
@@ -180,10 +191,9 @@ def aggregate(run_dir: Path, defense_names: list[str]) -> dict:
             rows.append({"image_id": rec["image_id"], "class": rec["class"],
                          "target": rec["target"], "epsilon": rec["epsilon"],
                          "attack_success_D0": rec["attack_success_D0"],
-                         "defense": dname, "condition": "adversarial",
-                         "model": rec["model"], "prediction": r["prediction"],
-                         "raw": r["raw"], "target_success": r["target_success"],
-                         "gt_recovered": r["gt_recovered"], "linf": rec["linf"]})
+                         "defense": dname, "model": rec["model"],
+                         "answer": r["answer"], "target_success": r["target_success"],
+                         "restored": r["restored"], "linf": rec["linf"]})
             m = dict(r["mechanism"]); m.update(
                 {"image_id": rec["image_id"], "epsilon": rec["epsilon"], "defense": dname})
             mech.append(m)
@@ -191,7 +201,7 @@ def aggregate(run_dir: Path, defense_names: list[str]) -> dict:
     _write_jsonl(run_dir / "metrics" / "perturbation.jsonl", mech)
     return {"clean_jobs": len(list(clean_dir.glob('*.json'))),
             "adv_jobs": len(list(adv_dir.glob('*.json'))),
-            "rows": len(rows), "clean_accuracy": acc}
+            "rows": len(rows), "preservation": preservation}
 
 
 def _write_jsonl(path: Path, rows: list[dict]) -> None:

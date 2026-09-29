@@ -18,6 +18,17 @@ def test_targeted_asr_length_mismatch():
         M.targeted_asr(["a"], ["a", "b"])
 
 
+def test_normalize_answer():
+    assert M.normalize_answer("  The Main object is a Shih-Tzu! ") == "the main object is a shih tzu"
+    assert M.normalize_answer(None) == ""
+
+
+def test_contains_target():
+    assert M.contains_target("The main object is a Shih-Tzu.", "Shih-Tzu") is True
+    assert M.contains_target("a colorful fish", "Shih-Tzu") is False
+    assert M.contains_target("anything", "") is False
+
+
 def test_match_label_substring_and_longest():
     names = ["cat", "wildcat", "dog"]
     assert M.match_label("this is a wildcat sitting", names) == "wildcat"

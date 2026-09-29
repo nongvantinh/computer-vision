@@ -36,6 +36,19 @@ def accuracy(predictions: Sequence[str], labels: Sequence[str]) -> float:
     return sum(int(p == l) for p, l in zip(predictions, labels)) / len(predictions)
 
 
+def normalize_answer(s: str) -> str:
+    """Lowercase, drop punctuation, collapse whitespace, for robust comparison."""
+    s = (s or "").strip().lower()
+    s = re.sub(r"[^a-z0-9 ]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def contains_target(answer: str, target: str) -> bool:
+    """Targeted success: the answer contains the target label (normalized)."""
+    t = normalize_answer(target)
+    return bool(t) and t in normalize_answer(answer)
+
+
 def match_label(answer: str, class_names: Sequence[str]) -> str | None:
     """Map a free-text VLM answer to one of the known class names.
 

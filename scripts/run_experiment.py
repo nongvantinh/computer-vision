@@ -30,9 +30,19 @@ def main() -> int:
                     help="stable, resumable output dir (reused across sessions)")
     ap.add_argument("--max-hours", type=float, default=None,
                     help="session time budget; stops cleanly between jobs")
+    ap.add_argument("--limit", type=int, default=None,
+                    help="only the first N images (pilot)")
+    ap.add_argument("--steps", type=int, default=None,
+                    help="override PGD steps (pilot; faster)")
+    ap.add_argument("--epsilon", type=float, action="append", default=None,
+                    help="override epsilon(s); repeatable (pilot)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     acfg = load_config(args.attack)
+    if args.steps is not None:
+        acfg["steps"] = args.steps
+    if args.epsilon:
+        acfg["epsilon"] = args.epsilon
     seed_everything(cfg["seed"])
 
     run_dir = Path(args.out)
@@ -54,13 +64,15 @@ def main() -> int:
 
     log.info("stage 1/2: clean baseline")
     run_clean(model, ds, defenses, run_dir, image_size=size, max_new_tokens=mnt,
-              deadline=deadline)
+              deadline=deadline, limit=args.limit)
 
-    log.info("stage 2/2: attack + defenses")
+    log.info("stage 2/2: attack + defenses (steps=%s, eps=%s, limit=%s)",
+             acfg["steps"], acfg["epsilon"], args.limit)
     run_full(model, ds, defenses, run_dir,
              epsilons=acfg["epsilon"], pgd_steps=acfg["steps"],
              pgd_step_size=acfg["step_size"], pgd_random_start=acfg["random_start"],
-             seed=cfg["seed"], image_size=size, max_new_tokens=mnt, deadline=deadline)
+             seed=cfg["seed"], image_size=size, max_new_tokens=mnt, deadline=deadline,
+             limit=args.limit)
 
     stats = aggregate(run_dir, cfg["defenses"])
     log.info("aggregated: %s", stats)
