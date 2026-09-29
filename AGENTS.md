@@ -131,6 +131,12 @@ results/mvp --max-hours N` is stable/resumable. Full design + how to run a secon
 account: `docs/implementation/colab-resume.md`. Results are keyed by job files
 (`results/mvp/jobs/{clean,adv}/*.json`); a killed session loses at most one job.
 
+**Two Colab front-ends, same resumable experiment:** the browser notebook, and a
+terminal path using Google's Colab CLI (`uv tool install google-colab-cli`) via
+`scripts/colab_run.sh` + `scripts/colab_bootstrap.py`. Both write state to Drive.
+The CLI login is interactive (per Google account); see
+`docs/implementation/colab-cli.md`.
+
 ## Status
 
 - [x] Repo cleaned; setup preserved.
