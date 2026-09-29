@@ -37,3 +37,8 @@ results/
 
 # OS / editor cruft
 .DS_Store
+
+# Editor/agent skill trees (installed locally, not project files)
+.cursor/
+.claude/
+.agents/
