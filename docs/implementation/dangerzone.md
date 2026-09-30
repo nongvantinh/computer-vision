@@ -257,13 +257,13 @@ key comes from a keyserver, not a hosted file (a hosted-file URL 404s):
 ```sh
 apt-get update && apt-get install -y ca-certificates curl gnupg podman
 install -dm755 /etc/apt/keyrings
-# Use keyserver.ubuntu.com, not keys.openpgp.org: the repo Release is signed by the
-# signing subkey (04CABEB5DD76BACF2BD43D2FF3ACC60F62EA51CB), and keys.openpgp.org
-# strips subkeys, causing "NO_PUBKEY F3ACC60F62EA51CB ... repository is not signed".
-gpg --keyserver hkps://keyserver.ubuntu.com --no-default-keyring --no-permission-warning \
+gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --no-permission-warning \
     --homedir "$(mktemp -d)" \
     --keyring gnupg-ring:/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg \
     --recv-keys DE28AB241FA48260FAC9B8BAA7C9B38522604281
+# chmod is required: apt verifies Release as the _apt user, which cannot read a
+# mode-600 keyring, and reports "NO_PUBKEY ... repository is not signed" if it can't.
+chmod +r /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg
 . /etc/os-release
 echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
 https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \

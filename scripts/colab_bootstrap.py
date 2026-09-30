@@ -66,12 +66,13 @@ apt-get -qq install -y ca-certificates curl gnupg podman
 install -dm755 /etc/apt/keyrings
 rm -f /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg   # fresh keyring, so a re-run merges the subkey
 # FPF publishes the signing key on a keyserver, not as a hosted file (a hosted-file
-# URL 404s). Use keyserver.ubuntu.com: it carries the signing SUBKEY the repo Release
-# is signed with (keys.openpgp.org strips subkeys, which causes a NO_PUBKEY error).
-gpg --keyserver hkps://keyserver.ubuntu.com --no-default-keyring --no-permission-warning \
+# URL 404s). Import it, then chmod +r so apt's verifier (runs as the _apt user) can
+# read the keyring; without that, apt reports NO_PUBKEY even though the key is present.
+gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --no-permission-warning \
     --homedir "$(mktemp -d)" \
     --keyring gnupg-ring:/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg \
     --recv-keys DE28AB241FA48260FAC9B8BAA7C9B38522604281
+chmod +r /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg
 . /etc/os-release
 echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
 https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \
