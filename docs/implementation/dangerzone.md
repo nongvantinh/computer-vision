@@ -281,12 +281,34 @@ work headless. This is wired into `scripts/colab_bootstrap.py` and the notebook
 (best-effort, so a failure skips D5 rather than crashing the run). With
 `tools.dangerzone_cmd: "dangerzone-cli"`, re-run and record the per-image runtime.
 
-## STATUS: BLOCKED
+## Colab (Ubuntu 24.04, Podman): also blocked, different reason
 
-The real Dangerzone 0.11.0 was installed and reached the point of launching its
-sandbox container, and the signed container image was pulled and cosign-verified.
-It could not sanitize the test image in this environment. Dangerzone requires
-Podman on Linux; this host has only Docker and no way to install Podman without
-root. Forcing Docker fails because Docker rejects the Podman-only `--userns
-nomap` flag (exit 125) and the gVisor image will not run under Docker's default
-runtime. The blocker is the container engine, not the adapter.
+Retried on the actual Colab GPU host, where Podman does install (Colab has root).
+The container image pulled and cosign-verified. The conversion still fails, because
+Colab runs everything as **root** and Dangerzone drives Podman with `--userns nomap`,
+which Podman only accepts in **rootless** mode:
+
+```
+podman run --userns nomap ...     -> Error: nomap is only supported in rootless mode  (rc 125)
+podman run --rm <image> echo ok   -> netavark: Netlink error: Operation not permitted (rc 126)
+```
+
+So on Colab the blocker is rootful-vs-rootless plus a locked-down kernel (netlink
+denied), not Docker. Dangerzone hardcodes `--userns nomap`, and there is no CLI flag
+to relax it. Running rootless would need a non-root user with `/etc/subuid`,
+`/etc/subgid`, unprivileged user namespaces, cgroup delegation, and a second ~1.6 GB
+image pull into that user's storage, which is impractical on a free Colab session and
+may still hit the kernel restrictions. D5 is therefore excluded from the Colab runs
+(the notebook and bootstrap pass `--defenses D0,jpeg90,jpeg75,jpeg50`).
+
+## STATUS: BLOCKED (on available compute)
+
+Dangerzone is not blocked in principle: the real 0.11.0 installs, and its signed
+image pulls and cosign-verifies. It is blocked on both hosts available for this
+project. On the local box (Docker-only, no root) the image will not run under
+Docker's runtime. On Colab (root-only) Podman rejects Dangerzone's rootless-only
+`--userns nomap`. Getting the D5 data point needs a host with working rootless Podman
+(a normal cloud VM or workstation). Because the attack and defense evaluation are
+decoupled (the adversarial images are persisted as `adv/*.npy`), D5 could be added
+later on such a host without recomputing the attack. The blocker is the container
+engine and privilege model, never the adapter.

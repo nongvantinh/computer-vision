@@ -54,36 +54,11 @@ env.update({"HF_HOME": "/content/hf_cache", "MPLBACKEND": "Agg",
 #    4-bit load that fits LLaVA-1.5-7B + the backward pass on a 16 GB T4.
 sh("pip -q install transformers accelerate bitsandbytes scipy matplotlib pyyaml pillow",
    check=True)
-sh("apt-get -qq install -y poppler-utils")   # pdftoppm for the Dangerzone rasterize step
 
-# 3b. Dangerzone (D5) needs Podman on Linux; Colab has root. Best-effort: if this
-#     fails, build_defenses skips D5 and the run proceeds on the JPEG defenses.
-#     See docs/implementation/dangerzone.md.
-dz = r"""
-set -e
-apt-get -qq update
-apt-get -qq install -y ca-certificates curl gnupg podman
-install -dm755 /etc/apt/keyrings
-rm -f /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg   # fresh keyring, so a re-run merges the subkey
-# FPF publishes the signing key on a keyserver, not as a hosted file (a hosted-file
-# URL 404s). Import it, then chmod +r so apt's verifier (runs as the _apt user) can
-# read the keyring; without that, apt reports NO_PUBKEY even though the key is present.
-gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --no-permission-warning \
-    --homedir "$(mktemp -d)" \
-    --keyring gnupg-ring:/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg \
-    --recv-keys DE28AB241FA48260FAC9B8BAA7C9B38522604281
-chmod +r /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg
-. /etc/os-release
-echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
-https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \
-    > /etc/apt/sources.list.d/fpf-apt-tools.list
-apt-get -qq update
-apt-get -qq install -y dangerzone
-dangerzone-image upgrade   # pull + cosign-verify the container image (~1.6 GB), once
-dangerzone-cli --version || true
-"""
-if sh(dz) != 0:
-    print("WARN: Dangerzone/Podman setup failed; D5 will be skipped this run.", flush=True)
+# Dangerzone (D5) is BLOCKED on Colab: it needs rootless Podman (--userns nomap), but
+# Colab runs as root with a locked-down kernel (podman run fails rc 125/126). So D5 is
+# not installed here and is excluded from the run below. See docs/implementation/
+# dangerzone.md; run it on a rootless-Podman host to get the D5 data point.
 
 # 4. dataset: fetch the free 20-class subset to ephemeral disk (deterministic, so the
 #    manifest is identical every session/account). Only results/state persist to Drive.
@@ -99,6 +74,7 @@ sh("python scripts/validate_attack.py --epsilon 0.0313725490", cwd=PROJECT, env=
 
 pilot = "--limit 12 --epsilon 0.0313725490" if MODE == "pilot" else ""
 sh(f"python scripts/run_experiment.py --run-id {RUN_ID} --runs-base '{RUNS_BASE}' "
+   f"--defenses D0,jpeg90,jpeg75,jpeg50 "   # D5 excluded: Dangerzone can't run on Colab
    f"--max-hours {SESSION_HOURS} {pilot}", cwd=PROJECT, env=env)
 sh(f"python scripts/run_analysis.py --run '{OUT}'", cwd=PROJECT, env=env)
 
