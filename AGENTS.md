@@ -152,10 +152,14 @@ The CLI login is interactive (per Google account); see
 - [x] Persistence/resume rebuilt: `results/runs/<run_id>/` run-directory contract,
   attack/defense jobs split, adversarial images persisted (46 tests pass).
 - [x] ICDR investigated: BLOCKED (commercial Aspose dependency; see `icdr.md`).
-- [x] Dangerzone verified: real tool runs + image cosign-verified; needs Podman on
-  Linux, so it runs on the Colab host (root), not the Docker-only local box; wired
-  into the Colab bootstrap. See `dangerzone.md`.
-- [ ] Cloud run: checkpoints 1–3, then the persisted pilot, then scale.
+- [x] Dangerzone: blocked on Colab (needs rootless Podman); runs via the decoupled
+  workflow (sanitize on a rootless-Podman workstation, generate on the GPU host).
+  `dangerzone.md`.
+- [x] Pilot complete: N=12, eps=8/255, five defenses, 0 failures
+  (`results/runs/pilot_n12_eps8`, numbers in `results.md`). Pipeline validated end to end.
+- [x] Mechanism metric corrected to defense-controlled (`defended_adv - defended_clean`).
+- [ ] Final study: N=200, eps in {4,8,16}/255; ready to launch/resume across accounts
+  (`runbook.md`), then stats + mechanism + figures + report.
 - [ ] Final report (`docs/report/`).
 - [ ] Presentation (`slides/`).
 - Full audit: `docs/implementation/final-status.md`.

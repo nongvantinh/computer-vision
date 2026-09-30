@@ -5,6 +5,16 @@ code rather than by assuming a component works because a file exists. This is th
 working ground truth for finishing the project. It supersedes the status checklist
 in AGENTS.md where the two disagree.
 
+## Pilot validated the whole pipeline (2026-09-30)
+
+A complete N=12, eps=8/255, five-defense run finished end to end with zero failures
+(`results/runs/pilot_n12_eps8/`, numbers in `results.md`). This confirms, on real
+hardware, that LLaVA loads and backprops in 4-bit, the targeted attack works, the
+dataset/JPEG/Dangerzone defenses run, persistence/resume hold, and the stats/analysis
+produce sane output. The rows below that were "PARTIAL pending cloud" are now confirmed.
+The remaining work is the full study (N=200, eps in {4,8,16}/255), which is ready to
+launch and resume across accounts (see `runbook.md`); D5 uses the decoupled workflow.
+
 ## How each row was checked
 
 - Unit tests: `.venv-exp/bin/python -m pytest -q` -> 41 passed (CPU only).
