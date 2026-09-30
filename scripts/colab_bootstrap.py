@@ -65,8 +65,9 @@ apt-get -qq update
 apt-get -qq install -y ca-certificates curl gnupg podman
 install -dm755 /etc/apt/keyrings
 # FPF publishes the signing key on a keyserver, not as a hosted file (a hosted-file
-# URL 404s). Import it into the keyring apt will trust.
-gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --no-permission-warning \
+# URL 404s). Use keyserver.ubuntu.com: it carries the signing SUBKEY the repo Release
+# is signed with (keys.openpgp.org strips subkeys, which causes a NO_PUBKEY error).
+gpg --keyserver hkps://keyserver.ubuntu.com --no-default-keyring --no-permission-warning \
     --homedir "$(mktemp -d)" \
     --keyring gnupg-ring:/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg \
     --recv-keys DE28AB241FA48260FAC9B8BAA7C9B38522604281
