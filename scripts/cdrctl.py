@@ -261,11 +261,16 @@ def cmd_status(args) -> int:
 # --------------------------------------------------------------------------- #
 def _run_batch_dummy(session: str) -> tuple[int, str]:
     """A trivial VM job to validate provisioning/rotation without the experiment."""
-    prog = ("import subprocess;"
-            "print('DUMMY OK', subprocess.run(['nvidia-smi','-L'],"
-            "capture_output=True,text=True).stdout)")
-    return sh(["colab", "exec", "-s", session, "--timeout", "120"],
-              timeout=180)  # NOTE: pipe prog via stdin in real use; dummy checks wiring
+    prog = ("import subprocess\n"
+            "print('DUMMY OK')\n"
+            "print(subprocess.run(['nvidia-smi', '-L'], capture_output=True, "
+            "text=True).stdout)\n")
+    try:
+        p = subprocess.run(["colab", "exec", "-s", session, "--timeout", "120"],
+                           input=prog, capture_output=True, text=True, timeout=180)
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+    except subprocess.TimeoutExpired as e:
+        return 124, f"timeout: {e}"
 
 
 def cmd_run(args) -> int:
