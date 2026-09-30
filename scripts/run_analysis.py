@@ -140,7 +140,9 @@ def main() -> int:
              "holm_bonferroni": holm, "mechanism": mech_summary,
              "tradeoff_plot": str(plot_path)}
     atomic_write_json(lay.statistics, stats)
-    log.info("wrote %s and %s", lay.statistics, plot_path)
+    from src.analysis.figures import all_figures
+    made = all_figures(stats, lay.root / "plots")
+    log.info("wrote %s, %s, figures: %s", lay.statistics, plot_path, list(made))
     return 0
 
 

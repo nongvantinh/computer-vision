@@ -48,8 +48,9 @@ python scripts/run_experiment.py --config configs/experiment.yaml --run-id mvp_0
 python scripts/run_experiment.py --run-id mvp_001 --resume          # after any kill
 python scripts/run_experiment.py --run-id pilot_12 --limit 12 --epsilon 0.0313725490
 
-# analysis (safe to run on a partial run)
-python scripts/run_analysis.py --run results/runs/mvp_001
+# analysis (safe to run on a partial run); figures come from statistics.json
+python scripts/run_analysis.py --run results/runs/mvp_001    # stats + trade-off + figures
+python scripts/make_figures.py --run results/runs/mvp_001    # regenerate figures only
 python -m src.visualization.demo --run results/runs/mvp_001 --static
 ```
 
