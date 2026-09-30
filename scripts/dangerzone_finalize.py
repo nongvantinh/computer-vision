@@ -28,7 +28,7 @@ from src.evaluation.metrics import normalize_answer, contains_target  # noqa: E4
 from src.experiment.layout import RunLayout  # noqa: E402
 from src.experiment import store  # noqa: E402
 from src.experiment.aggregate import aggregate  # noqa: E402
-from src.utils.resume import sanitize_id, atomic_write_json, is_done  # noqa: E402
+from src.utils.resume import sanitize_id, atomic_write_json, read_json  # noqa: E402
 
 log = get_logger("dz_finalize")
 NAME = "dangerzone"
@@ -36,6 +36,13 @@ NAME = "dangerzone"
 
 def _load_png(path: Path) -> np.ndarray:
     return np.asarray(Image.open(path).convert("RGB"), np.float32) / 255.0
+
+
+def _pending(jp: Path) -> bool:
+    """A job is pending if it does not exist yet or a previous attempt errored, so a
+    failed Dangerzone job from an earlier run is retried instead of skipped."""
+    rec = read_json(jp)
+    return rec is None or rec.get("error") is not None
 
 
 def main() -> int:
@@ -59,44 +66,55 @@ def main() -> int:
               for r in (json.loads(l) for l in lay.attack_results.open() if l.strip())}
 
     model = build_model(cfg)
-    made = 0
+    made = missing = 0
     for (iid, eps), meta in sidecar.items():
         if meta.get("error"):
             continue
-        sid = sanitize_id(iid)
         atk = attack.get((iid, eps))
         if not atk:
+            log.warning("no attack row for %s eps=%s; skipping", iid, eps)
             continue
         clean_answer, target = atk["clean_answer"], atk["target"]
 
         # clean D5 (preservation)
         cjp = store.clean_job_path(lay, iid, NAME)
         cpng = dz_dir / meta["clean_sanitized"]
-        if not is_done(cjp) and cpng.exists():
-            ans = model.generate(_load_png(cpng), prompt, mnt)
-            atomic_write_json(cjp, {
-                "image_id": iid, "defense": NAME, "clean_answer": clean_answer,
-                "answer": ans, "preserved": int(normalize_answer(ans) == clean_answer),
-                "error": None})
-            made += 1
+        if _pending(cjp):
+            if not cpng.exists():
+                log.warning("missing sanitized clean image %s (was dz/ uploaded?)", cpng.name)
+                missing += 1
+            else:
+                ans = model.generate(_load_png(cpng), prompt, mnt)
+                atomic_write_json(cjp, {
+                    "image_id": iid, "defense": NAME, "clean_answer": clean_answer,
+                    "answer": ans, "preserved": int(normalize_answer(ans) == clean_answer),
+                    "error": None})
+                made += 1
 
         # adversarial D5 (security)
         djp = store.defense_job_path(lay, iid, eps, NAME)
         apng = dz_dir / meta["adv_sanitized"]
-        if not is_done(djp) and apng.exists():
-            ans = model.generate(_load_png(apng), prompt, mnt)
-            atomic_write_json(djp, {
-                "image_id": iid, "class": atk.get("class"), "target": target,
-                "epsilon": eps, "defense": NAME, "clean_answer": clean_answer,
-                "answer": ans,
-                "target_success": int(contains_target(ans, target)),
-                "restored": int(normalize_answer(ans) == clean_answer),
-                "psnr_vs_clean": meta.get("psnr_vs_clean"),
-                "ssim_vs_clean": meta.get("ssim_vs_clean"),
-                "mechanism": meta.get("mechanism"), "error": None})
-            made += 1
+        if _pending(djp):
+            if not apng.exists():
+                log.warning("missing sanitized adv image %s (was dz/ uploaded?)", apng.name)
+                missing += 1
+            else:
+                ans = model.generate(_load_png(apng), prompt, mnt)
+                atomic_write_json(djp, {
+                    "image_id": iid, "class": atk.get("class"), "target": target,
+                    "epsilon": eps, "defense": NAME, "clean_answer": clean_answer,
+                    "answer": ans,
+                    "target_success": int(contains_target(ans, target)),
+                    "restored": int(normalize_answer(ans) == clean_answer),
+                    "psnr_vs_clean": meta.get("psnr_vs_clean"),
+                    "ssim_vs_clean": meta.get("ssim_vs_clean"),
+                    "mechanism": meta.get("mechanism"), "error": None})
+                made += 1
 
     summary = aggregate(lay)
+    if missing:
+        log.warning("%d sanitized image(s) missing under %s — re-upload dz/ if this is nonzero",
+                    missing, dz_dir)
     log.info("wrote %d D5 job(s). Coverage: %s", made, summary.get("coverage_by_defense"))
     log.info("next: python scripts/run_analysis.py --run %s", lay.root)
     return 0
