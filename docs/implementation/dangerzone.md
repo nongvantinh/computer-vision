@@ -301,7 +301,27 @@ image pull into that user's storage, which is impractical on a free Colab sessio
 may still hit the kernel restrictions. D5 is therefore excluded from the Colab runs
 (the notebook and bootstrap pass `--defenses D0,jpeg90,jpeg75,jpeg50`).
 
-## STATUS: BLOCKED (on available compute)
+## Decoupled workflow: sanitize on a workstation, generate on the GPU host
+
+Because the attack and defense evaluation are separate, D5 can be added without a
+Dangerzone-capable GPU host. The adversarial images are persisted (`adv/*.npy`), so:
+
+1. On a workstation with rootless Podman (Ubuntu with sudo: `apt install uidmap podman
+   poppler-utils` then the `dangerzone` `.deb`; the kernel needs user namespaces on and
+   `/etc/subuid` set, which a normal desktop has), run
+   `scripts/dangerzone_sanitize.py --run <run>`. It reads the run's `adv/*.npy` and
+   `examples/*_clean.png`, pushes each through the real Dangerzone tool, and writes the
+   sanitized images plus a sidecar (mechanism, PSNR/SSIM, runtime) to `<run>/dz/`. No
+   GPU or model.
+2. Move `<run>/dz/` to the GPU host and run `scripts/dangerzone_finalize.py --run <run>`.
+   It generates the model answer on each sanitized image with the SAME 4-bit LLaVA that
+   produced the rest of the run (so preservation/restoration stay comparable) and writes
+   the D5 clean and defense jobs. The attack is never recomputed.
+
+This is how D5 is obtained for this project, since the two available GPU-adjacent hosts
+(Colab, and the 4 GB laptop) cannot run Dangerzone directly.
+
+## STATUS: BLOCKED on the GPU hosts; obtainable via the decoupled workflow
 
 Dangerzone is not blocked in principle: the real 0.11.0 installs, and its signed
 image pulls and cosign-verifies. It is blocked on both hosts available for this
