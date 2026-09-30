@@ -62,10 +62,14 @@ sh("apt-get -qq install -y poppler-utils")   # pdftoppm for the Dangerzone raste
 dz = r"""
 set -e
 apt-get -qq update
-apt-get -qq install -y ca-certificates curl podman
+apt-get -qq install -y ca-certificates curl gnupg podman
 install -dm755 /etc/apt/keyrings
-curl -fsSL https://packages.freedom.press/keys/fpf-apt-tools-archive-keyring.gpg \
-    -o /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg
+# FPF publishes the signing key on a keyserver, not as a hosted file (a hosted-file
+# URL 404s). Import it into the keyring apt will trust.
+gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --no-permission-warning \
+    --homedir "$(mktemp -d)" \
+    --keyring gnupg-ring:/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg \
+    --recv-keys DE28AB241FA48260FAC9B8BAA7C9B38522604281
 . /etc/os-release
 echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
 https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \

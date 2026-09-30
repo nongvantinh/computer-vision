@@ -248,12 +248,31 @@ deliberate edit rather than changed as part of this investigation.
 ## What it would take to unblock
 
 Run the experiment's Dangerzone condition on a host where Podman is available:
-either install the `dangerzone` `.deb` (which brings Podman and the signed image)
-with root, or `apt install podman` and use the source install described above.
-The Colab and cloud-GPU paths in the implementation plan can both provide Podman
-with root, so this is a host-provisioning step rather than a code problem. On such
-a host, set `tools.dangerzone_cmd` as above, then re-run the sanitize check on a
-test image and record the measured per-image runtime.
+install the `dangerzone` `.deb` (which pulls in Podman and, on first use, the signed
+image) with root. The Colab and cloud-GPU paths provide root, so this is a
+host-provisioning step, not a code problem. Verified working on Colab (Ubuntu 24.04
+"noble", Podman 4.9.3); the FPF apt repo has both `noble` and `jammy`. The signing
+key comes from a keyserver, not a hosted file (a hosted-file URL 404s):
+
+```sh
+apt-get update && apt-get install -y ca-certificates curl gnupg podman
+install -dm755 /etc/apt/keyrings
+gpg --keyserver hkps://keys.openpgp.org --no-default-keyring --no-permission-warning \
+    --homedir "$(mktemp -d)" \
+    --keyring gnupg-ring:/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg \
+    --recv-keys DE28AB241FA48260FAC9B8BAA7C9B38522604281
+. /etc/os-release
+echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
+https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \
+    > /etc/apt/sources.list.d/fpf-apt-tools.list
+apt-get update && apt-get install -y dangerzone
+dangerzone-cli --version   # 0.11.0
+```
+
+This is wired into `scripts/colab_bootstrap.py` and the notebook (best-effort, so a
+failure skips D5 rather than crashing the run). With `tools.dangerzone_cmd:
+"dangerzone-cli"`, re-run and record the measured per-image runtime. The container
+image (~1.6 GB) pulls and cosign-verifies on the first sanitize.
 
 ## STATUS: BLOCKED
 
