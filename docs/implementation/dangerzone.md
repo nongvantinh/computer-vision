@@ -321,6 +321,16 @@ Dangerzone-capable GPU host. The adversarial images are persisted (`adv/*.npy`),
 This is how D5 is obtained for this project, since the two available GPU-adjacent hosts
 (Colab, and the 4 GB laptop) cannot run Dangerzone directly.
 
+Confirmed working: the N=12 pilot's Dangerzone condition was produced this way. On the
+questing workstation (rootless Podman 0.11.0), `dangerzone_sanitize.py` ran at about
+2.3 s per image (clean and adversarial each), 24 images, zero errors, and
+`dangerzone_finalize.py` generated the answers on the same 4-bit LLaVA on Colab. The
+exact transform per image is: raster (336x336) -> single-page PDF (PIL, 96 dpi) ->
+`dangerzone-cli` (renders the page to pixels in the gVisor sandbox, rebuilds a clean
+PDF) -> `pdftoppm -r 150` raster -> resize to 336x336 (LANCZOS). It is a documented
+image<->PDF adaptation of the real tool, not a native standalone-image call, and the
+report states it as such.
+
 ## STATUS: BLOCKED on the GPU hosts; obtainable via the decoupled workflow
 
 Dangerzone is not blocked in principle: the real 0.11.0 installs, and its signed

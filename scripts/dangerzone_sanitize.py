@@ -23,7 +23,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.defenses.dangerzone import DangerzoneDefense  # noqa: E402
 from src.defenses.base import array_to_pil  # noqa: E402
-from src.analysis.perturbation import analyze_defense_on_perturbation  # noqa: E402
+from src.analysis.perturbation import analyze_defense_controlled  # noqa: E402
 from src.evaluation.metrics import psnr, ssim  # noqa: E402
 from src.experiment.layout import RunLayout  # noqa: E402
 from src.experiment.store import load_adv_image  # noqa: E402
@@ -67,26 +67,30 @@ def main() -> int:
             log.warning("no adv image for %s eps=%s; skipping", iid, eps)
             continue
         try:
-            # clean (once per image) — preservation input
-            if iid not in seen_clean:
-                if not is_done(clean_png_out):
-                    t0 = time.perf_counter()
-                    dz_clean = defense.sanitize(clean)
-                    array_to_pil(dz_clean.image).save(clean_png_out)
-                    rec["clean_runtime_s"] = time.perf_counter() - t0
-                seen_clean.add(iid)
+            # sanitized clean (once per image) — preservation input + mechanism control
+            if not is_done(clean_png_out):
+                t0 = time.perf_counter()
+                dz_clean = defense.sanitize(clean)
+                array_to_pil(dz_clean.image).save(clean_png_out)
+                rec["clean_runtime_s"] = time.perf_counter() - t0
+            defended_clean = _load_png(clean_png_out)
+            seen_clean.add(iid)
             # adversarial — security input
             if is_done(adv_png):
                 done += 1
+                defended_adv = _load_png(adv_png)
             else:
                 t0 = time.perf_counter()
                 dz_adv = defense.sanitize(adv)
                 array_to_pil(dz_adv.image).save(adv_png)
                 rec["adv_runtime_s"] = time.perf_counter() - t0
-                rec["mechanism"] = analyze_defense_on_perturbation(clean, adv, dz_adv.image)
-                rec["psnr_vs_clean"] = psnr(clean, dz_adv.image)
-                rec["ssim_vs_clean"] = ssim(clean, dz_adv.image)
+                defended_adv = dz_adv.image
                 made += 1
+            # defense-controlled mechanism: defended_adv - defended_clean
+            rec["mechanism"] = analyze_defense_controlled(
+                clean, adv, defended_clean, defended_adv)
+            rec["psnr_vs_clean"] = psnr(clean, defended_adv)
+            rec["ssim_vs_clean"] = ssim(clean, defended_adv)
             sidecar.append(rec)
         except Exception as e:
             failed += 1

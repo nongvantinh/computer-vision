@@ -73,6 +73,26 @@ leaning on the p-value alone.
 4. State the conclusion at the strength the numbers support, including "inconclusive"
    when the interval is wide or the adjusted p-value is above alpha.
 
+## Mechanism analysis (defense-controlled)
+
+The mechanism analysis is descriptive, not a hypothesis test, but it must not be
+confounded. The naive residual `defended_adv - clean` mixes two things: the attack
+energy that survives the defense, and the defense's own footprint on the image (JPEG
+blocking, Dangerzone re-rendering). A heavy defense then looks like it "added" energy,
+which is meaningless. `analyze_defense_controlled` fixes this by comparing:
+
+- raw perturbation: `delta = adv - clean`
+- post-defense perturbation: `delta_D = defended_adv - defended_clean`
+
+Both images pass through the same defense, so the defense's footprint cancels and
+`delta_D` isolates the adversarial component that survives. For each it reports L-inf,
+L2, per-pixel energy, and the high-frequency energy fraction; `energy_ratio =
+energy(delta_D) / energy(delta)` summarizes how much attack energy remains. The writeup
+compares the raw and post-defense high-frequency fraction across defenses and says
+"mechanistic evidence consistent with high-frequency attenuation", never a causal claim.
+The N=12 pilot used the old confounded measure (flagged in its results); the final run
+uses the controlled one.
+
 ## Coverage and honesty
 
 `scripts/run_analysis.py` first rebuilds the derived tables from the job files, so

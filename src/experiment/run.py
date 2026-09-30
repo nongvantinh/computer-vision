@@ -22,7 +22,7 @@ import numpy as np
 from ..utils.resume import atomic_write_json, is_done
 from ..utils.logging import get_logger
 from ..evaluation.metrics import normalize_answer, contains_target, psnr, ssim
-from ..analysis.perturbation import analyze_defense_on_perturbation
+from ..analysis.perturbation import analyze_defense_controlled
 from ..attacks.targeted_pgd import PGDConfig, targeted_pgd
 from . import store
 from .layout import RunLayout
@@ -122,8 +122,9 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     break
                 try:
                     res = defense.sanitize(adv)
+                    res_clean = defense.sanitize(clean)   # defense footprint on clean
                     ans = model.generate(res.image, ds.prompt, max_new_tokens)
-                    mech = analyze_defense_on_perturbation(clean, adv, res.image)
+                    mech = analyze_defense_controlled(clean, adv, res_clean.image, res.image)
                     rec = {"image_id": s.image_id, "class": s.class_name,
                            "target": s.target_class_name, "epsilon": eps,
                            "defense": dname, "clean_answer": ref, "answer": ans,

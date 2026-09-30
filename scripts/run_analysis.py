@@ -124,14 +124,33 @@ def main() -> int:
     for r in defrows:
         if r.get("mechanism"):
             mech[r["defense"]].append(r["mechanism"])
+
+    def _mean(ms, *path, default=float("nan")):
+        vals = []
+        for m in ms:
+            v = m
+            for k in path:
+                v = v.get(k, {}) if isinstance(v, dict) else {}
+            vals.append(v if isinstance(v, (int, float)) else default)
+        return float(np.mean(vals)) if vals else default
+
     mech_summary = {}
     for d, ms in mech.items():
-        mech_summary[d] = {
-            "energy_removed_frac_mean": float(np.mean([m["energy_removed_frac"] for m in ms])),
-            "residual_highfreq_frac_mean": float(np.mean([m["residual_highfreq_frac"] for m in ms])),
-            "injected_highfreq_frac_mean": float(np.mean([m["injected_highfreq_frac"] for m in ms])),
-            "residual_energy_mean": float(np.mean([m["residual_energy"] for m in ms])),
-            "n": len(ms)}
+        if ms and "post_defense" in ms[0]:   # defense-controlled format (final runs)
+            mech_summary[d] = {
+                "raw_highfreq_frac_mean": _mean(ms, "raw", "highfreq_frac"),
+                "post_highfreq_frac_mean": _mean(ms, "post_defense", "highfreq_frac"),
+                "raw_energy_mean": _mean(ms, "raw", "energy"),
+                "post_energy_mean": _mean(ms, "post_defense", "energy"),
+                "post_linf_mean": _mean(ms, "post_defense", "linf"),
+                "post_l2_mean": _mean(ms, "post_defense", "l2"),
+                "energy_ratio_mean": _mean(ms, "energy_ratio"),
+                "n": len(ms)}
+        else:                                 # legacy confounded format (pilot)
+            mech_summary[d] = {
+                "residual_highfreq_frac_mean": _mean(ms, "residual_highfreq_frac"),
+                "residual_energy_mean": _mean(ms, "residual_energy"),
+                "n": len(ms), "note": "legacy confounded metric (defended_adv - clean)"}
 
     stats = {"epsilons": epsilons, "eps_plot": eps_plot,
              "preservation": preservation, "asr": asr,

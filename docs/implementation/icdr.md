@@ -158,6 +158,17 @@ There is no valid `ICDR_CMD` to record. It is left unset in
 - Interface: no single-image input/output entrypoint; `main()` uses hardcoded
   directories with all operations commented out.
 
+## Containerization does not help
+
+A reasonable question is whether a Docker/Podman image would make ICDR reproducible.
+It would not. The blocker is not environment setup; it is that every image operation
+calls the commercial Aspose.Imaging library, which needs a paid license file at
+runtime, and unlicensed use is watermarked with pixel load/save disabled. A container
+would still need the licensed Aspose jar and `.lic` baked in, which cannot be
+distributed, and the committed `icdr.java` does not compile regardless. So a container
+reproduces the blocker, not a working tool. ICDR stays BLOCKED unless a licensed Aspose
+build is supplied, in which case `ICDR_CMD` can be set and the honest adapter runs it.
+
 ## STATUS: BLOCKED
 
 Reason: the real ArielCyber/ICDR implements its entire pipeline on the
