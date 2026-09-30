@@ -39,12 +39,14 @@ else:
     if sh(f"git clone -q --branch {BRANCH} {REPO_URL} {PROJECT}") != 0:
         raise SystemExit(f"clone failed; for a private repo use a token URL or colab upload")
 
-# 2. durable Drive tree; HF cache on Drive so the 14 GB model downloads once
-for sub in ("results", "state", "hf_cache", "imagenet", "reports"):
+# 2. durable Drive tree (small: results + state only; model/dataset stay ephemeral)
+for sub in ("results", "state", "reports"):
     os.makedirs(f"{DRIVE_DIR}/{sub}", exist_ok=True)
 
 env = os.environ.copy()
-env.update({"HF_HOME": f"{DRIVE_DIR}/hf_cache", "MPLBACKEND": "Agg",
+# Free Drive is 15 GB and the model is ~14 GB, so the HF cache stays on ephemeral
+# /content (re-downloads each session) and only small results/state go to Drive.
+env.update({"HF_HOME": "/content/hf_cache", "MPLBACKEND": "Agg",
             "PYTHONUNBUFFERED": "1",
             "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"})
 
@@ -75,11 +77,9 @@ dangerzone-cli --version || true
 if sh(dz) != 0:
     print("WARN: Dangerzone/Podman setup failed; D5 will be skipped this run.", flush=True)
 
-# 4. ImageNet subset lives on Drive; expose it where the config expects it
-val_link = f"{PROJECT}/data/imagenet/val"
-os.makedirs(os.path.dirname(val_link), exist_ok=True)
-if not os.path.exists(val_link):
-    os.symlink(f"{DRIVE_DIR}/imagenet/val", val_link)
+# 4. dataset: fetch the free 20-class subset to ephemeral disk (deterministic, so the
+#    manifest is identical every session/account). Only results/state persist to Drive.
+sh("python scripts/fetch_imagenette.py --out data/imagenet/val", cwd=PROJECT, env=env)
 
 RUNS_BASE = f"{DRIVE_DIR}/results/runs"   # run dir on Drive -> resumable across sessions
 OUT = f"{RUNS_BASE}/{RUN_ID}"

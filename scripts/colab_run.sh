@@ -38,14 +38,16 @@ REPO_URL = "${REPO_URL}"
 BRANCH = "${BRANCH}"
 DRIVE_DIR = "${DRIVE_DIR}"
 SESSION_HOURS = ${HOURS}
+RUN_ID = "${RUN_ID}"
+MODE = "${MODE}"
 PY
 )
 { printf '%s\n' "$params"; cat "$HERE/scripts/colab_bootstrap.py"; } | colab exec -s "$SESSION"
 
 echo "[4/5] pull the light results bundle -> results/from_colab/"
 mkdir -p "$HERE/results/from_colab"
-colab download -s "$SESSION" /content/mvp_light.zip \
-    "$HERE/results/from_colab/mvp_light.zip" || echo "  (no bundle yet; check the log above)"
+colab download -s "$SESSION" "/content/${RUN_ID}_light.zip" \
+    "$HERE/results/from_colab/${RUN_ID}_light.zip" || echo "  (no bundle yet; check the log above)"
 
 if [ "$KEEP" = 1 ]; then
     echo "[5/5] keeping VM '$SESSION' alive (KEEP=1); stop it with: colab stop -s $SESSION"
@@ -53,4 +55,4 @@ else
     echo "[5/5] stopping VM '$SESSION'"
     colab stop -s "$SESSION"
 fi
-echo "done. Durable results on Drive at ${DRIVE_DIR}/results/mvp . Re-run to continue."
+echo "done. Durable run on Drive at ${DRIVE_DIR}/results/runs/${RUN_ID} . Re-run (same RUN_ID) to continue."

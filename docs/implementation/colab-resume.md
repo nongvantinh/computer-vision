@@ -10,19 +10,26 @@ Notebook: `notebooks/colab_cdr_vlm.ipynb`. Logic module: `src/colab/sync.py`
 
 ## The four resume layers
 1. **Job idempotency.** Every unit writes one file and is skipped if it exists:
-   `results/mvp/jobs/clean/<id>.json` and `results/mvp/jobs/adv/<id>__eps<e>.json`.
-   A rerun recomputes only unfinished jobs. Writes are atomic (temp + `os.replace`)
-   so a killed process never leaves a half-file that looks "done".
+   `results/runs/<run_id>/jobs/clean/<id>__<defense>.json`,
+   `.../jobs/attack/<id>__eps<e>.json`, and
+   `.../jobs/defense/<id>__eps<e>__<defense>.json`. The expensive attack is one job
+   per (image, epsilon) and its adversarial image is persisted losslessly as
+   `adv/<id>__eps<e>.npy`, which every defense job reads back, so adding a defense
+   never recomputes the attack. A rerun recomputes only unfinished jobs. Writes are
+   atomic (temp + `os.replace`) so a killed process never leaves a half-file.
 2. **Merge-only restore.** At session start the notebook pulls state from Drive and
-   from the fallback zip and **adds missing files only** — a finished job's file is
+   from the fallback zip and **adds missing files only**. A finished job's file is
    immutable, so the two sources can never conflict and restore is order-independent.
-3. **Heavy artifacts live on Drive, downloaded once.** `HF_HOME` points at
-   `DRIVE/hf_cache`, so LLaVA-1.5-7B (~14 GB) is fetched one time and every account
-   reuses it; the ImageNet subset lives at `DRIVE/imagenet/val`. Neither travels per
-   session. Only the **light** job JSON / tables / plots sync back and forth.
+3. **Only small state travels; model and dataset are ephemeral.** Free Google Drive
+   is 15 GB and LLaVA-1.5-7B is ~14 GB, so the model does not live on Drive. `HF_HOME`
+   points at ephemeral `/content/hf_cache` and the model re-downloads each session
+   (~10 min). The dataset (free imagenette+imagewoof) is fetched to ephemeral disk
+   each session; its selection is deterministic (fixed wnids + seed 1234), so every
+   account builds the identical 200-image manifest. Only the light job JSON, tables,
+   and plots sync to Drive, which keeps the shared folder far under quota.
 4. **Time budget + autosync.** `run_experiment.py --max-hours` stops cleanly between
-   jobs before Colab reclaims the runtime, and a background thread pushes
-   `results/mvp` to Drive every few minutes, so a timeout costs at most that interval.
+   jobs before Colab reclaims the runtime, and a background thread pushes the run
+   directory to Drive every few minutes, so a timeout costs at most that interval.
 
 ## Two transport paths (used together, merged)
 - **Path A — shared Drive folder (recommended).** From the main account, share the
@@ -43,14 +50,14 @@ Notebook: `notebooks/colab_cdr_vlm.ipynb`. Logic module: `src/colab/sync.py`
   accounts don't write the same store at once (set `FORCE_UNLOCK` only if one is dead).
 
 ## Drive layout
+Small by design: the model and dataset are not here (they re-fetch to ephemeral
+disk each session), so the shared folder stays well under the 15 GB free quota.
 ```
 DRIVE_DIR/
-  hf_cache/        # HF_HOME — LLaVA weights, downloaded once
-  imagenet/val/    # 20-class subset, uploaded once (val/<wnid>/*.JPEG)
-  results/mvp/     # durable mirror of the run (jobs/, tables, plots)
-  state/           # profile.json, sessions.jsonl, session.lock
-  reports/         # figures/tables for the writeup
-  cdr_state.zip    # Path B fallback bundle
+  results/runs/<run_id>/   # durable run: jobs/, adv/, *_results.jsonl, summary.json, plots/
+  state/                   # profile.json, sessions.jsonl, session.lock
+  reports/                 # figures/tables for the writeup
+  cdr_state.zip            # Path B fallback bundle
 ```
 
 ## Running a second account
