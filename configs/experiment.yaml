@@ -16,19 +16,21 @@ dataset:
   per_class: 10
   image_size: 336
 
-# Defense conditions (proposal §3.6). D0 baseline, JPEG frontier, two real CDR tools.
+# Defense conditions (proposal §3.6). D0 baseline, JPEG curve, real CDR (Dangerzone).
+# ICDR is BLOCKED (commercial Aspose dependency; see docs/implementation/icdr.md) and
+# left out of the active set. Re-add "icdr" below only with a licensed ICDR_CMD.
+# build_defenses skips any defense whose tool is unavailable rather than crashing.
 defenses:
   - D0
   - jpeg90
   - jpeg75
   - jpeg50
-  - icdr
   - dangerzone
 
-# External tool commands (real tools; see docs/implementation/experiment-protocol.md)
+# External tool commands (real tools; see docs/implementation/*.md)
 tools:
-  # {input}/{output} placeholders are required for ICDR
-  icdr_cmd: "java -jar external/ICDR/icdr.jar {input} {output}"
+  # ICDR: set only with a licensed Aspose build. {input}/{output} placeholders required.
+  # icdr_cmd: "java -jar external/ICDR/icdr.jar {input} {output}"
   dangerzone_cmd: "dangerzone-cli"
 
 evaluation:

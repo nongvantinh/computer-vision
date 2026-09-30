@@ -123,13 +123,20 @@ Full protocol: `docs/implementation/experiment-protocol.md`.
 local 4 GB laptop GPU is used only for CPU unit tests (`.venv-exp`). See
 `docs/implementation/implementation-plan.md` §9.
 
-**Colab (multi-account, resumable):** `notebooks/colab_cdr_vlm.ipynb` runs the full
-experiment on Colab and survives usage limits by continuing on another account.
-Logic lives in `src/colab/sync.py` (state store, merge-only restore, session lock)
-and `src/utils/resume.py` (atomic per-job idempotency); `run_experiment.py --out
-results/mvp --max-hours N` is stable/resumable. Full design + how to run a second
-account: `docs/implementation/colab-resume.md`. Results are keyed by job files
-(`results/mvp/jobs/{clean,adv}/*.json`); a killed session loses at most one job.
+**Persistence/resume:** results live under `results/runs/<run_id>/`, a
+self-describing run directory (config, environment, git commit, dataset manifest,
+model/defense info, coverage summary). The expensive attack is crafted once per
+(image, epsilon), persisted losslessly as `adv/*.npy`, then read back by every
+defense job, so adding a defense never recomputes the attack. Logic:
+`src/experiment/{layout,store,run,aggregate}.py` on top of `src/utils/resume.py`
+(atomic per-job writes). `run_experiment.py --run-id <id> [--resume] [--max-hours N]`
+skips finished jobs, so a reclaimed VM loses at most one job. See
+`docs/implementation/reproducibility.md` and `final-status.md`.
+
+**Colab (multi-account, resumable):** `notebooks/colab_cdr_vlm.ipynb` +
+`src/colab/sync.py` (state store, merge-only restore, session lock). Point
+`--run-id` at a Drive-mounted directory so the run survives the session. Full design:
+`docs/implementation/colab-resume.md`.
 
 **Two Colab front-ends, same resumable experiment:** the browser notebook, and a
 terminal path using Google's Colab CLI (`uv tool install google-colab-cli`) via
@@ -142,6 +149,11 @@ The CLI login is interactive (per Google account); see
 - [x] Repo cleaned; setup preserved.
 - [x] Proposal written and compiled (`docs/proposal/proposal.pdf`, 8 pp).
 - [x] MVP code scaffolded (`src/`, `configs/`, `scripts/`, `tests/`).
-- [ ] Cloud run: checkpoints 1–3, then the 200-image experiment.
+- [x] Persistence/resume rebuilt: `results/runs/<run_id>/` run-directory contract,
+  attack/defense jobs split, adversarial images persisted (46 tests pass).
+- [x] ICDR investigated: BLOCKED (commercial Aspose dependency; see `icdr.md`).
+- [ ] Dangerzone standup (see `docs/implementation/dangerzone.md`).
+- [ ] Cloud run: checkpoints 1–3, then the persisted pilot, then scale.
 - [ ] Final report (`docs/report/`).
 - [ ] Presentation (`slides/`).
+- Full audit: `docs/implementation/final-status.md`.

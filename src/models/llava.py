@@ -61,6 +61,10 @@ class LlavaWrapper:
         self.device = self.cfg.device
         self._mean = torch.tensor(CLIP_MEAN, device=self.device).view(1, 3, 1, 1)
         self._std = torch.tensor(CLIP_STD, device=self.device).view(1, 3, 1, 1)
+        # caches: the prompt token sequence and target tokenization are identical
+        # across the 200 PGD steps, so build them once (item 10, efficiency).
+        self._prompt_cache: dict = {}
+        self._target_cache: dict = {}
 
     # ---- image -> normalized pixel_values (differentiable) ------------------ #
     def to_pixel_values(self, image_01):
@@ -85,26 +89,43 @@ class LlavaWrapper:
 
     # ---- prompt / label construction --------------------------------------- #
     def _prompt_ids(self, question: str):
-        """Build input_ids (with expanded image tokens) for the USER turn."""
+        """input_ids + attention_mask (with expanded image tokens) for the USER turn.
+
+        Cached per question and kept on-device: the processor and chat template run
+        once, not once per PGD step.
+        """
+        cached = self._prompt_cache.get(question)
+        if cached is not None:
+            return cached
         from PIL import Image
         conv = [{"role": "user", "content": [
             {"type": "image"}, {"type": "text", "text": question}]}]
         text = self.processor.apply_chat_template(conv, add_generation_prompt=True)
         dummy = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE))
         enc = self.processor(images=dummy, text=text, return_tensors="pt")
-        return enc  # has input_ids, attention_mask, pixel_values (we replace pv)
+        out = {"input_ids": enc["input_ids"].to(self.device),
+               "attention_mask": enc["attention_mask"].to(self.device)}
+        self._prompt_cache[question] = out
+        return out
+
+    def _target_ids(self, target_answer: str):
+        cached = self._target_cache.get(target_answer)
+        if cached is not None:
+            return cached
+        tgt = self.processor.tokenizer(
+            " " + target_answer.strip(), add_special_tokens=False,
+            return_tensors="pt")["input_ids"].to(self.device)
+        self._target_cache[target_answer] = tgt
+        return tgt
 
     # ---- teacher-forcing loss toward a target answer ----------------------- #
     def target_loss(self, image_01, question: str, target_answer: str):
         """Cross-entropy of the VLM on `target_answer` tokens given the image."""
         torch = self.torch
         enc = self._prompt_ids(question)
-        input_ids = enc["input_ids"].to(self.device)
-        attn = enc["attention_mask"].to(self.device)
-
-        tgt = self.processor.tokenizer(
-            " " + target_answer.strip(), add_special_tokens=False,
-            return_tensors="pt")["input_ids"].to(self.device)
+        input_ids = enc["input_ids"]
+        attn = enc["attention_mask"]
+        tgt = self._target_ids(target_answer)
 
         full_ids = torch.cat([input_ids, tgt], dim=1)
         full_attn = torch.cat([attn, torch.ones_like(tgt)], dim=1)
@@ -124,8 +145,8 @@ class LlavaWrapper:
     def generate(self, image_01, question: str, max_new_tokens: int = 16) -> str:
         torch = self.torch
         enc = self._prompt_ids(question)
-        input_ids = enc["input_ids"].to(self.device)
-        attn = enc["attention_mask"].to(self.device)
+        input_ids = enc["input_ids"]
+        attn = enc["attention_mask"]
         if not torch.is_tensor(image_01):
             image_01 = self.make_image_tensor(image_01, requires_grad=False)
         with torch.no_grad():
