@@ -135,6 +135,17 @@ def sh(cmd: list[str], timeout: float = 120) -> tuple[int, str]:
         return 127, f"not found: {e}"
 
 
+def sh_interactive(cmd: list[str], timeout: float = 900) -> int:
+    """Run a command inheriting the terminal, so an OAuth prompt (URL + code entry)
+    works. Never capture output here or the login flow deadlocks."""
+    try:
+        return subprocess.run(cmd, timeout=timeout).returncode
+    except subprocess.TimeoutExpired:
+        return 124
+    except FileNotFoundError:
+        return 127
+
+
 # --------------------------------------------------------------------------- #
 # account manager
 # --------------------------------------------------------------------------- #
@@ -146,21 +157,24 @@ def cmd_accounts_add(args) -> int:
           f"colab login flow starts...")
     if COLAB_TOKEN.exists():
         COLAB_TOKEN.unlink()
-    # trigger the interactive OAuth flow via a harmless command
-    print("[cdrctl] Running `colab usage` — complete the Google login when prompted.")
-    rc, out = sh(["colab", "usage"], timeout=600)
-    print(out.strip())
+    # Interactive: the CLI prints an auth URL and reads the code from the terminal, so
+    # this must inherit stdin/stdout (do NOT capture, or it deadlocks).
+    print("[cdrctl] Complete the Google login below (open the URL, paste the code).")
+    print("[cdrctl] Log in as the Google account you want to register as '%s'.\n" % name)
+    rc = sh_interactive(["colab", "usage"], timeout=900)
     if not COLAB_TOKEN.exists():
-        print(f"[cdrctl] no token created; login did not complete. rc={rc}")
+        print(f"\n[cdrctl] no token created; login did not complete. rc={rc}")
         return 1
     shutil.copy2(COLAB_TOKEN, dst)
     os.chmod(dst, 0o600)
+    _rc, out = sh(["colab", "usage"], timeout=120)   # captured now, just for the balance
+    bal = parse_balance(out)
     pool = load_pool()
-    set_state(pool, name, state=READY, last_balance=parse_balance(out),
+    set_state(pool, name, state=READY, last_balance=bal,
               added=time.strftime("%Y-%m-%d %H:%M:%S"))
     pool["active"] = name
     save_pool(pool)
-    print(f"[cdrctl] stored credential for '{name}' (balance={parse_balance(out)}).")
+    print(f"\n[cdrctl] stored credential for '{name}' (balance={bal}).")
     return 0
 
 
@@ -326,8 +340,9 @@ def _run_experiment_batch(session: str, args) -> tuple[int, str]:
     header = (f'REPO_URL = "{args.repo_url}"\nBRANCH = "{args.branch}"\n'
               f'DRIVE_DIR = "{args.drive_dir}"\nSESSION_HOURS = {args.max_hours}\n'
               f'RUN_ID = "{args.run_id}"\nMODE = "{args.mode}"\n')
-    # drivemount (may need one interactive approval per account; retried once)
-    sh(["colab", "drivemount", "-s", session], timeout=180)
+    # drivemount may prompt once per account; inherit the terminal so you can approve
+    # it (do not capture, or a prompt would deadlock).
+    sh_interactive(["colab", "drivemount", "-s", session], timeout=300)
     proc = subprocess.run(["colab", "exec", "-s", session,
                            "--timeout", str(int(args.max_hours * 3600 + 900))],
                           input=header + boot, capture_output=True, text=True,
