@@ -42,9 +42,11 @@ class DangerzoneDefense(Defense):
             cmd = [self.cli, "--output-filename", str(safe_pdf), str(src_pdf)]
             proc = subprocess.run(cmd, capture_output=True, timeout=self.timeout_s)
             if proc.returncode != 0 or not safe_pdf.exists():
+                out = proc.stdout.decode(errors="ignore")
+                err = proc.stderr.decode(errors="ignore")
                 raise RuntimeError(
-                    f"Dangerzone failed (rc={proc.returncode}): "
-                    f"{proc.stderr.decode(errors='ignore')[:500]}")
+                    f"Dangerzone failed (rc={proc.returncode}). "
+                    f"stdout: {out[-900:]} || stderr: {err[-900:]}")
             # rasterize the sanitized PDF back to a raster at original size
             stem = Path(td) / "page"
             subprocess.run(
