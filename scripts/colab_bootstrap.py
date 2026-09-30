@@ -64,6 +64,7 @@ set -e
 apt-get -qq update
 apt-get -qq install -y ca-certificates curl gnupg podman
 install -dm755 /etc/apt/keyrings
+rm -f /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg   # fresh keyring, so a re-run merges the subkey
 # FPF publishes the signing key on a keyserver, not as a hosted file (a hosted-file
 # URL 404s). Use keyserver.ubuntu.com: it carries the signing SUBKEY the repo Release
 # is signed with (keys.openpgp.org strips subkeys, which causes a NO_PUBKEY error).
