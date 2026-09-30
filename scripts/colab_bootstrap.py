@@ -79,6 +79,7 @@ https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \
     > /etc/apt/sources.list.d/fpf-apt-tools.list
 apt-get -qq update
 apt-get -qq install -y dangerzone
+dangerzone-image upgrade   # pull + cosign-verify the container image (~1.6 GB), once
 dangerzone-cli --version || true
 """
 if sh(dz) != 0:

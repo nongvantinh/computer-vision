@@ -269,13 +269,17 @@ echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
 https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \
     > /etc/apt/sources.list.d/fpf-apt-tools.list
 apt-get update && apt-get install -y dangerzone
-dangerzone-cli --version   # 0.11.0
+dangerzone-image upgrade    # REQUIRED: pull + cosign-verify the container image
+dangerzone-cli --version    # 0.11.0
 ```
 
-This is wired into `scripts/colab_bootstrap.py` and the notebook (best-effort, so a
-failure skips D5 rather than crashing the run). With `tools.dangerzone_cmd:
-"dangerzone-cli"`, re-run and record the measured per-image runtime. The container
-image (~1.6 GB) pulls and cosign-verifies on the first sanitize.
+`dangerzone-image upgrade` is not optional: without it the first conversion fails with
+"No container image found. Please initialize Dangerzone by running: dangerzone-image
+upgrade" (the tool does not auto-pull). The `dangerzone` `.deb` bundles cosign, so the
+pull and signature verification of `ghcr.io/freedomofpress/dangerzone/v1` (~1.6 GB)
+work headless. This is wired into `scripts/colab_bootstrap.py` and the notebook
+(best-effort, so a failure skips D5 rather than crashing the run). With
+`tools.dangerzone_cmd: "dangerzone-cli"`, re-run and record the per-image runtime.
 
 ## STATUS: BLOCKED
 
