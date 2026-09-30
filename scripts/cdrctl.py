@@ -233,17 +233,26 @@ def cmd_accounts_rm(args) -> int:
     return 0
 
 
+def cmd_accounts_reset(args) -> int:
+    pool = load_pool()
+    names = [args.name] if args.name else list(pool["accounts"])
+    for name in names:
+        set_state(pool, name, state=READY, cooldown_until=0)
+    save_pool(pool)
+    print(f"[cdrctl] reset to READY: {', '.join(names) or '(none)'}")
+    return 0
+
+
 def cmd_status(args) -> int:
     pool = load_pool()
     for name in list(pool["accounts"]):
-        rc, out = activate(name)
-        bal = parse_balance(out)
-        state = pool["accounts"][name].get("state", READY)
-        if bal is not None and bal <= 0 and state == READY:
-            state = EXHAUSTED
-        set_state(pool, name, last_balance=bal, state=state)
-        print(f"  {name:16} balance={bal} state={state}")
+        _rc, out = activate(name)
+        bal = parse_balance(out)   # paid-credit balance; 0.00 is normal for free accounts
+        set_state(pool, name, last_balance=bal)
+        print(f"  {name:28} paid_balance={bal} state={pool['accounts'][name].get('state', READY)}")
     save_pool(pool)
+    print("(note: balance is PAID Colab Pro credits; free accounts show 0.00 but still "
+          "provision free GPUs. Exhaustion is detected when `colab new` fails.)")
     return 0
 
 
@@ -287,11 +296,11 @@ def cmd_run(args) -> int:
             set_state(pool, name, state=AUTH_REQUIRED if act == "reauth" else EXHAUSTED,
                       cooldown_until=time.time() + args.cooldown)
             save_pool(pool); continue
-        if bal is not None and bal <= 0:
-            print(f"[cdrctl] '{name}' balance {bal} <= 0; cooling down.")
-            set_state(pool, name, state=EXHAUSTED, last_balance=bal,
-                      cooldown_until=time.time() + args.cooldown)
-            save_pool(pool); continue
+        # NOTE: `colab usage` balance is PAID Colab Pro credits; a free account always
+        # shows 0.00 yet can still provision a free T4. So balance is informational only,
+        # never a skip signal. Exhaustion is detected by provisioning failure below.
+        print(f"[cdrctl] '{name}' active (paid-credit balance={bal}; free tier still ok).")
+        set_state(pool, name, last_balance=bal)
 
         # provision a session (retry transient 503s)
         session = args.session
@@ -370,6 +379,7 @@ def main() -> int:
     p = asub.add_parser("use"); p.add_argument("name"); p.set_defaults(fn=cmd_accounts_use)
     p = asub.add_parser("who"); p.set_defaults(fn=cmd_accounts_who)
     p = asub.add_parser("rm"); p.add_argument("name"); p.set_defaults(fn=cmd_accounts_rm)
+    p = asub.add_parser("reset"); p.add_argument("name", nargs="?"); p.set_defaults(fn=cmd_accounts_reset)
 
     p = sub.add_parser("status"); p.set_defaults(fn=cmd_status)
 
