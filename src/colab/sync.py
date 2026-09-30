@@ -143,7 +143,12 @@ class StateStore:
 
 
 def count_done_jobs(results_dir: str | Path) -> dict:
-    """How many job files exist — the true 'what is finished' count."""
+    """How many job files exist — the true 'what is finished' count.
+
+    Matches the run-directory layout: jobs/{clean,attack,defense}. `attack` counts
+    the expensive adversarial-image jobs; `defense` the per-defense evaluations.
+    """
     r = Path(results_dir)
     return {"clean": len(list((r / "jobs" / "clean").glob("*.json"))),
-            "adv": len(list((r / "jobs" / "adv").glob("*.json")))}
+            "attack": len(list((r / "jobs" / "attack").glob("*.json"))),
+            "defense": len(list((r / "jobs" / "defense").glob("*.json")))}

@@ -6,10 +6,13 @@ PDF, discarding all non-pixel structure. To use it as an *image* defense we:
           -> rasterize page back to an image at the original resolution.
 The rasterize step uses pdftoppm (Poppler). This adapter is the smallest honest
 way to push an image through Dangerzone's real sanitization pipeline; it is
-documented in experiment-protocol.md rather than hidden.
+documented in experiment-protocol.md rather than hidden. Dangerzone also accepts
+raster images natively, so the PDF wrap is valid but optional (see dangerzone.md).
 
-Configure the CLI via DANGERZONE_CMD (default "dangerzone-cli"). The tool needs a
-container engine (Docker present in this project's cloud env).
+Configure the CLI via DANGERZONE_CMD (default "dangerzone-cli"). On Linux the tool
+drives Podman (not Docker); install it on the run host (e.g. Colab has root). See
+docs/implementation/dangerzone.md for the verified setup and the container engine
+requirement.
 """
 from __future__ import annotations
 

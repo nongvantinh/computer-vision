@@ -19,6 +19,7 @@ GPU="${GPU:-A100}"; HOURS="${HOURS:-3}"; SESSION="${SESSION:-cdr}"
 HIGHMEM="${HIGHMEM:-0}"; KEEP="${KEEP:-0}"; BRANCH="${BRANCH:-master}"
 REPO_URL="${REPO_URL:-https://github.com/nongvantinh/computer-vision.git}"
 DRIVE_DIR="${DRIVE_DIR:-/content/drive/MyDrive/computer-vision}"
+RUN_ID="${RUN_ID:-pilot_12}"; MODE="${MODE:-pilot}"   # MODE=pilot|full
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 
 command -v colab >/dev/null || { echo "Colab CLI missing: uv tool install google-colab-cli"; exit 1; }

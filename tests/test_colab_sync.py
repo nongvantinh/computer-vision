@@ -75,8 +75,10 @@ def test_state_store_lock_and_history(tmp_path):
 
 def test_count_done_jobs(tmp_path):
     (tmp_path / "jobs" / "clean").mkdir(parents=True)
-    (tmp_path / "jobs" / "adv").mkdir(parents=True)
-    (tmp_path / "jobs" / "clean" / "a.json").write_text("{}")
-    (tmp_path / "jobs" / "adv" / "a__eps0.0314.json").write_text("{}")
-    (tmp_path / "jobs" / "adv" / "a__eps0.0627.json").write_text("{}")
-    assert count_done_jobs(tmp_path) == {"clean": 1, "adv": 2}
+    (tmp_path / "jobs" / "attack").mkdir(parents=True)
+    (tmp_path / "jobs" / "defense").mkdir(parents=True)
+    (tmp_path / "jobs" / "clean" / "a__D0.json").write_text("{}")
+    (tmp_path / "jobs" / "attack" / "a__eps0.0314.json").write_text("{}")
+    (tmp_path / "jobs" / "attack" / "a__eps0.0627.json").write_text("{}")
+    (tmp_path / "jobs" / "defense" / "a__eps0.0314__D0.json").write_text("{}")
+    assert count_done_jobs(tmp_path) == {"clean": 1, "attack": 2, "defense": 1}

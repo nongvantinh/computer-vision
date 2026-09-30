@@ -152,7 +152,9 @@ The CLI login is interactive (per Google account); see
 - [x] Persistence/resume rebuilt: `results/runs/<run_id>/` run-directory contract,
   attack/defense jobs split, adversarial images persisted (46 tests pass).
 - [x] ICDR investigated: BLOCKED (commercial Aspose dependency; see `icdr.md`).
-- [ ] Dangerzone standup (see `docs/implementation/dangerzone.md`).
+- [x] Dangerzone verified: real tool runs + image cosign-verified; needs Podman on
+  Linux, so it runs on the Colab host (root), not the Docker-only local box; wired
+  into the Colab bootstrap. See `dangerzone.md`.
 - [ ] Cloud run: checkpoints 1–3, then the persisted pilot, then scale.
 - [ ] Final report (`docs/report/`).
 - [ ] Presentation (`slides/`).

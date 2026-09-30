@@ -1,11 +1,15 @@
 """Runs INSIDE a Colab VM via `colab exec` (see scripts/colab_run.sh).
 
 scripts/colab_run.sh prepends a small parameter header (REPO_URL, BRANCH,
-DRIVE_DIR, SESSION_HOURS) and pipes this file to `colab exec`, so it executes in
-the VM kernel. It clones the repo, points the HF cache and the experiment output
-at Google Drive, and runs the experiment with a time budget. Because `--out` is
-on Drive and jobs are idempotent, re-running continues where a previous session
-(or account) stopped.
+DRIVE_DIR, SESSION_HOURS, RUN_ID, MODE) and pipes this file to `colab exec`, so it
+executes in the VM kernel. It clones the repo, points the HF cache and the run
+directory at Google Drive, and runs the experiment with a time budget. Because the
+run directory lives on Drive (`--runs-base`) and jobs are idempotent, re-running
+continues where a previous session (or account) stopped.
+
+MODE=pilot (default) runs the small persisted end-to-end pilot first (12 images,
+eps 8/255) so the pipeline is proven before scaling. MODE=full runs the whole
+matrix. Both are resumable under the same RUN_ID.
 
 Colab VMs ship torch+CUDA preinstalled, so we reuse that and only add the light
 deps instead of reinstalling a 2.5 GB torch wheel.
@@ -17,6 +21,8 @@ REPO_URL = globals().get("REPO_URL", "https://github.com/nongvantinh/computer-vi
 BRANCH = globals().get("BRANCH", "master")
 DRIVE_DIR = globals().get("DRIVE_DIR", "/content/drive/MyDrive/computer-vision")
 SESSION_HOURS = float(globals().get("SESSION_HOURS", 3.0))
+RUN_ID = globals().get("RUN_ID", "pilot_12")
+MODE = globals().get("MODE", "pilot")   # pilot | full
 PROJECT = "/content/cdr"
 
 
@@ -46,6 +52,28 @@ env.update({"HF_HOME": f"{DRIVE_DIR}/hf_cache", "MPLBACKEND": "Agg",
 #    4-bit load that fits LLaVA-1.5-7B + the backward pass on a 16 GB T4.
 sh("pip -q install transformers accelerate bitsandbytes scipy matplotlib pyyaml pillow",
    check=True)
+sh("apt-get -qq install -y poppler-utils")   # pdftoppm for the Dangerzone rasterize step
+
+# 3b. Dangerzone (D5) needs Podman on Linux; Colab has root. Best-effort: if this
+#     fails, build_defenses skips D5 and the run proceeds on the JPEG defenses.
+#     See docs/implementation/dangerzone.md.
+dz = r"""
+set -e
+apt-get -qq update
+apt-get -qq install -y ca-certificates curl podman
+install -dm755 /etc/apt/keyrings
+curl -fsSL https://packages.freedom.press/keys/fpf-apt-tools-archive-keyring.gpg \
+    -o /etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg
+. /etc/os-release
+echo "deb [signed-by=/etc/apt/keyrings/fpf-apt-tools-archive-keyring.gpg] \
+https://packages.freedom.press/apt-tools-prod ${VERSION_CODENAME} main" \
+    > /etc/apt/sources.list.d/fpf-apt-tools.list
+apt-get -qq update
+apt-get -qq install -y dangerzone
+dangerzone-cli --version || true
+"""
+if sh(dz) != 0:
+    print("WARN: Dangerzone/Podman setup failed; D5 will be skipped this run.", flush=True)
 
 # 4. ImageNet subset lives on Drive; expose it where the config expects it
 val_link = f"{PROJECT}/data/imagenet/val"
@@ -53,16 +81,20 @@ os.makedirs(os.path.dirname(val_link), exist_ok=True)
 if not os.path.exists(val_link):
     os.symlink(f"{DRIVE_DIR}/imagenet/val", val_link)
 
-OUT = f"{DRIVE_DIR}/results/mvp"    # state on Drive -> resumable across sessions/accounts
+RUNS_BASE = f"{DRIVE_DIR}/results/runs"   # run dir on Drive -> resumable across sessions
+OUT = f"{RUNS_BASE}/{RUN_ID}"
 
 # 5. pipeline. Each step is resumable; run_experiment honors the time budget.
 sh("python scripts/build_dataset.py --config configs/experiment.yaml", cwd=PROJECT, env=env)
 sh("python scripts/test_llava.py", cwd=PROJECT, env=env)                 # checkpoint 1
-sh(f"python scripts/run_experiment.py --out '{OUT}' --max-hours {SESSION_HOURS}",
-   cwd=PROJECT, env=env)
+sh("python scripts/validate_attack.py --epsilon 0.0313725490", cwd=PROJECT, env=env)  # ckpt 3
+
+pilot = "--limit 12 --epsilon 0.0313725490" if MODE == "pilot" else ""
+sh(f"python scripts/run_experiment.py --run-id {RUN_ID} --runs-base '{RUNS_BASE}' "
+   f"--max-hours {SESSION_HOURS} {pilot}", cwd=PROJECT, env=env)
 sh(f"python scripts/run_analysis.py --run '{OUT}'", cwd=PROJECT, env=env)
 
 # 6. light bundle for `colab download` (tables + plots, no heavy images/model)
-sh(f"cd '{OUT}' && zip -qr /content/mvp_light.zip statistics plots metrics clean "
-   f"jobs 2>/dev/null || true")
-print("DONE. Durable results on Drive at", OUT)
+sh(f"cd '{OUT}' && zip -qr /content/{RUN_ID}_light.zip summary.json statistics.json "
+   f"plots *_results.jsonl config.json environment.json 2>/dev/null || true")
+print("DONE. Durable run on Drive at", OUT)

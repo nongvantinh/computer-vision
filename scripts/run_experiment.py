@@ -36,7 +36,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/experiment.yaml")
     ap.add_argument("--attack", default="configs/attack.yaml")
-    ap.add_argument("--run-id", required=True, help="stable id under results/runs/")
+    ap.add_argument("--run-id", required=True, help="stable id for the run directory")
+    ap.add_argument("--runs-base", default=None,
+                    help="parent dir for run-id (default results/runs; set to a "
+                         "Drive path on Colab so the run survives the session)")
     ap.add_argument("--resume", action="store_true",
                     help="continue an existing run (skips finished jobs)")
     ap.add_argument("--max-hours", type=float, default=None,
@@ -59,12 +62,13 @@ def main() -> int:
         cfg["defenses"] = [d.strip() for d in args.defenses.split(",") if d.strip()]
     seed_everything(cfg["seed"])
 
+    base = Path(args.runs_base) if args.runs_base else None
     if args.resume:
-        lay = load_run(args.run_id)
-        create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"])  # refresh env
+        lay = load_run(args.run_id, base=base)
+        create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base)
         log.info("resuming run %s (%s)", args.run_id, lay.root)
     else:
-        lay = create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"])
+        lay = create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base)
         log.info("created run %s (%s)", args.run_id, lay.root)
 
     deadline = time.time() + args.max_hours * 3600 if args.max_hours else None
