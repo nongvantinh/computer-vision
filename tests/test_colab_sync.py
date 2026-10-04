@@ -82,3 +82,24 @@ def test_count_done_jobs(tmp_path):
     (tmp_path / "jobs" / "attack" / "a__eps0.0627.json").write_text("{}")
     (tmp_path / "jobs" / "defense" / "a__eps0.0314__D0.json").write_text("{}")
     assert count_done_jobs(tmp_path) == {"clean": 1, "attack": 2, "defense": 1}
+
+
+def test_restore_filters_pull_adv_arrays_but_light_filters_do_not(tmp_path):
+    """A restore that skips adv/*.npy makes run.py redo every finished attack."""
+    import shutil
+    import subprocess
+    from src.colab.sync import LIGHT_FILTERS, RESTORE_FILTERS
+    if shutil.which("rsync") is None:
+        import pytest
+        pytest.skip("rsync not installed")
+    src, light, full = tmp_path / "src", tmp_path / "light", tmp_path / "full"
+    (src / "adv").mkdir(parents=True)
+    (src / "jobs").mkdir()
+    (src / "adv" / "a.npy").write_bytes(b"x")
+    (src / "jobs" / "a.json").write_text("{}")
+    (src / "model.bin").write_bytes(b"x")
+    for dst, filt in ((light, LIGHT_FILTERS), (full, RESTORE_FILTERS)):
+        subprocess.run(["rsync", "-a", *filt, f"{src}/", f"{dst}/"], check=True)
+    assert not (light / "adv" / "a.npy").exists()
+    assert (full / "adv" / "a.npy").exists() and (full / "jobs" / "a.json").exists()
+    assert not (full / "model.bin").exists()

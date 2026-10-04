@@ -33,6 +33,11 @@ LIGHT_FILTERS = [
     "--exclude=*",
 ]
 
+# Restore filters: the light state plus the adversarial arrays. run.py treats an
+# attack as finished only when its job JSON exists AND adv/<id>.npy loads, so a
+# restore that skips the .npy files makes every new session redo finished attacks.
+RESTORE_FILTERS = LIGHT_FILTERS[:-1] + ["--include=*.npy", "--exclude=*"]
+
 # Drive subfolders (one asset class each, so they can be shared/wiped separately).
 DRIVE_TREE = ("results", "state", "hf_cache", "imagenet", "reports")
 
