@@ -113,6 +113,10 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     "attack_runtime_s": time.perf_counter() - t0,
                     "model": model.cfg.model_id})
                 made["attack"] += 1
+                log.info("attack done %s eps=%.4f loss %.2f -> %.2f (%.0fs, %d this session)",
+                         s.image_id, eps, r.losses[0] if r.losses else float("nan"),
+                         r.losses[-1] if r.losses else float("nan"),
+                         time.perf_counter() - t0, made["attack"])
 
             for dname, defense in defenses.items():
                 djp = store.defense_job_path(lay, s.image_id, eps, dname)
