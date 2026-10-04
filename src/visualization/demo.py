@@ -49,6 +49,11 @@ def contact_sheet(lay: RunLayout, image_id: str, eps: float, out_path: Path):
     import matplotlib.pyplot as plt
 
     adv = store.load_adv_image(lay, image_id, eps)
+    if adv is None:   # .npy missing from this copy of the run: fall back to the PNG
+        _, adv_png = store.adv_artifact_paths(lay, image_id, eps)
+        if not adv_png.exists():
+            return None
+        adv = _load_png(adv_png)
     clean_png = lay.examples / f"{image_id.replace('/', '__')}_clean.png"
     clean = _load_png(clean_png) if clean_png.exists() else np.zeros_like(adv)
     delta = adv - clean
@@ -96,7 +101,9 @@ def main() -> int:
         for image_id, eps in ids[: args.limit]:
             out = lay.examples / "sheets" / (
                 image_id.replace("/", "__") + f"_eps{eps:.4f}.png")
-            contact_sheet(lay, image_id, eps, out)
+            if contact_sheet(lay, image_id, eps, out) is None:
+                print("skip (no adversarial image on disk)", image_id, eps)
+                continue
             print("wrote", out)
         return 0
 

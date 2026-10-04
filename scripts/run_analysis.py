@@ -121,9 +121,14 @@ def main() -> int:
 
     # 4) mechanism aggregation from defense rows
     mech = defaultdict(list)
+    mech_legacy = defaultdict(list)
     for r in defrows:
-        if r.get("mechanism"):
-            mech[r["defense"]].append(r["mechanism"])
+        m = r.get("mechanism")
+        if not m:
+            continue
+        # rows written by the old runner (defended_adv - clean) lack "post_defense";
+        # keep the two formats apart so one never poisons the other's mean
+        (mech if "post_defense" in m else mech_legacy)[r["defense"]].append(m)
 
     def _mean(ms, *path, default=float("nan")):
         vals = []
@@ -136,7 +141,7 @@ def main() -> int:
 
     mech_summary = {}
     for d, ms in mech.items():
-        if ms and "post_defense" in ms[0]:   # defense-controlled format (final runs)
+        if ms:   # defense-controlled format (final runs)
             mech_summary[d] = {
                 "raw_highfreq_frac_mean": _mean(ms, "raw", "highfreq_frac"),
                 "post_highfreq_frac_mean": _mean(ms, "post_defense", "highfreq_frac"),
@@ -146,11 +151,11 @@ def main() -> int:
                 "post_l2_mean": _mean(ms, "post_defense", "l2"),
                 "energy_ratio_mean": _mean(ms, "energy_ratio"),
                 "n": len(ms)}
-        else:                                 # legacy confounded format (pilot)
-            mech_summary[d] = {
-                "residual_highfreq_frac_mean": _mean(ms, "residual_highfreq_frac"),
-                "residual_energy_mean": _mean(ms, "residual_energy"),
-                "n": len(ms), "note": "legacy confounded metric (defended_adv - clean)"}
+    for d, ms in mech_legacy.items():     # legacy confounded format (pilot rows)
+        mech_summary.setdefault(d, {})["legacy"] = {
+            "residual_highfreq_frac_mean": _mean(ms, "residual_highfreq_frac"),
+            "residual_energy_mean": _mean(ms, "residual_energy"),
+            "n": len(ms), "note": "legacy confounded metric (defended_adv - clean)"}
 
     stats = {"epsilons": epsilons, "eps_plot": eps_plot,
              "preservation": preservation, "asr": asr,
