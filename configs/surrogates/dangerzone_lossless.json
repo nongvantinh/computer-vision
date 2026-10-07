@@ -1,0 +1,45 @@
+{
+ "variant": "lossless",
+ "band": 8,
+ "steps": 4000,
+ "seed": 1234,
+ "n_pairs": 800,
+ "n_train": 600,
+ "n_heldout": 200,
+ "train": {
+  "clean": {
+   "n": 150,
+   "psnr_db_mean": 48.93237963033241,
+   "psnr_db_min": 45.59720076150258,
+   "ssim_mean": 0.9973684760610437,
+   "max_abs_diff_levels_mean": 3.7000020774205526,
+   "psnr_input_vs_real_db_mean": 31.183247684493544
+  },
+  "adv": {
+   "n": 450,
+   "psnr_db_mean": 48.34961020815518,
+   "psnr_db_min": 44.99306113446309,
+   "ssim_mean": 0.9990260569491499,
+   "max_abs_diff_levels_mean": 3.708891062206692,
+   "psnr_input_vs_real_db_mean": 29.563182097902537
+  }
+ },
+ "heldout": {
+  "clean": {
+   "n": 50,
+   "psnr_db_mean": 48.90452098101497,
+   "psnr_db_min": 46.95866112509246,
+   "ssim_mean": 0.9967861262767266,
+   "max_abs_diff_levels_mean": 3.8000013542175295,
+   "psnr_input_vs_real_db_mean": 30.845190563126238
+  },
+  "adv": {
+   "n": 150,
+   "psnr_db_mean": 48.13424724784732,
+   "psnr_db_min": 45.25205122182974,
+   "ssim_mean": 0.9989502864463513,
+   "max_abs_diff_levels_mean": 3.8466685883204144,
+   "psnr_input_vs_real_db_mean": 29.245030514404377
+  }
+ }
+}
