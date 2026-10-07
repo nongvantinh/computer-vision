@@ -4,7 +4,9 @@ None of these is a defense proposal. Each strips one ingredient out of a real
 defense so the study can say which ingredient suppresses the attack:
 
   adapter_only   our image -> PDF -> 150 dpi raster -> Lanczos resize pipeline,
-                 i.e. the Dangerzone adapter WITHOUT Dangerzone
+                 i.e. the Dangerzone adapter WITHOUT Dangerzone. The legacy form
+                 embeds the image as JPEG 75 (Pillow's PDF writer), so it contains a
+                 JPEG round trip; adapter_only_ll embeds it losslessly.
   resample_only  Lanczos up-then-down by the adapter's scale factor, no PDF
   chroma_only    JPEG-style 4:2:0 chroma subsampling, no DCT quantization
   noiseN         i.i.d. Gaussian noise of N/255 standard deviation, independent of
@@ -25,6 +27,7 @@ import numpy as np
 from PIL import Image
 
 from .base import Defense
+from .pdfwrap import write_pdf
 
 PDF_DPI = 96.0
 RASTER_DPI = 150.0
@@ -34,17 +37,19 @@ SCALE = RASTER_DPI / PDF_DPI          # 1.5625: 336 px -> 525 px
 class AdapterOnlyDefense(Defense):
     """The Dangerzone adapter with the sanitizer left out (control)."""
 
-    name = "adapter_only"
-
-    def __init__(self, pdftoppm: str = "pdftoppm", timeout_s: int = 120):
+    def __init__(self, pdftoppm: str = "pdftoppm", timeout_s: int = 120,
+                 embed: str = "jpeg"):
         self.pdftoppm = pdftoppm
         self.timeout_s = timeout_s
+        self.embed = embed
+        # "jpeg" = legacy adapter (contains a JPEG 75); "lossless" = byte-exact PDF
+        self.name = "adapter_only" if embed == "jpeg" else "adapter_only_ll"
 
     def _apply(self, img: Image.Image) -> tuple[Image.Image, dict]:
         w, h = img.size
         with tempfile.TemporaryDirectory() as td:
             pdf = Path(td) / "in.pdf"
-            img.convert("RGB").save(pdf, "PDF", resolution=PDF_DPI)
+            write_pdf(img, pdf, embed=self.embed, dpi=PDF_DPI)
             stem = Path(td) / "page"
             subprocess.run([self.pdftoppm, "-png", "-singlefile", "-r",
                             str(int(RASTER_DPI)), str(pdf), str(stem)],
@@ -52,7 +57,8 @@ class AdapterOnlyDefense(Defense):
             page = Image.open(str(stem) + ".png").convert("RGB")
             mid = page.size
             page = page.resize((w, h), Image.LANCZOS)
-        return page, {"op": "adapter_only", "intermediate_size": mid, "size": page.size}
+        return page, {"op": "adapter_only", "embed": self.embed,
+                      "intermediate_size": mid, "size": page.size}
 
 
 class ResampleOnlyDefense(Defense):

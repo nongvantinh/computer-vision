@@ -49,12 +49,23 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True)
     ap.add_argument("--config", default="configs/experiment.yaml")
+    ap.add_argument("--variant", choices=["jpeg", "lossless"], default="jpeg",
+                    help="'jpeg' = legacy adapter, defense name 'dangerzone', dir dz/; "
+                         "'lossless' = byte-exact PDF, 'dangerzone_ll', dir dz_ll/")
+    ap.add_argument("--dz-dir", default=None,
+                    help="sanitized images + sidecar (default <run>/dz or <run>/dz_ll)")
+    ap.add_argument("--attack-source", default=None,
+                    help="run dir holding attack_results.jsonl and dataset_manifest.json "
+                         "when --run is a defense-only run")
     args = ap.parse_args()
+    NAME = "dangerzone" if args.variant == "jpeg" else "dangerzone_ll"
     cfg = load_config(args.config)
     seed_everything(cfg["seed"])
     lay = RunLayout(Path(args.run))
-    dz_dir = lay.root / "dz"
-    prompt = json.loads(lay.dataset_manifest.read_text())["prompt"]
+    src = RunLayout(Path(args.attack_source)) if args.attack_source else lay
+    dz_dir = Path(args.dz_dir) if args.dz_dir else lay.root / (
+        "dz" if args.variant == "jpeg" else "dz_ll")
+    prompt = json.loads(src.dataset_manifest.read_text())["prompt"]
     mnt = cfg["evaluation"]["max_new_tokens"]
 
     sidecar = {}
@@ -63,7 +74,7 @@ def main() -> int:
             r = json.loads(l)
             sidecar[(r["image_id"], r.get("epsilon"))] = r
     attack = {(r["image_id"], r["epsilon"]): r
-              for r in (json.loads(l) for l in lay.attack_results.open() if l.strip())}
+              for r in (json.loads(l) for l in src.attack_results.open() if l.strip())}
 
     model = build_model(cfg)
     made = missing = 0

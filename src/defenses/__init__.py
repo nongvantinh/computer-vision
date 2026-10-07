@@ -15,13 +15,15 @@ def build_defense(name: str, **kwargs) -> Defense:
     if name == "icdr":
         from .icdr import IcdrDefense
         return IcdrDefense(**kwargs)
-    if name == "dangerzone":
+    if name in ("dangerzone", "dangerzone_ll"):
         from .dangerzone import DangerzoneDefense
-        return DangerzoneDefense(**kwargs)
+        return DangerzoneDefense(embed="lossless" if name.endswith("_ll") else "jpeg",
+                                 **kwargs)
     # controls: strip one ingredient out of a real defense (see controls.py)
-    if name == "adapter_only":
+    if name in ("adapter_only", "adapter_only_ll"):
         from .controls import AdapterOnlyDefense
-        return AdapterOnlyDefense(**kwargs)
+        return AdapterOnlyDefense(embed="lossless" if name.endswith("_ll") else "jpeg",
+                                  **kwargs)
     if name == "resample_only":
         from .controls import ResampleOnlyDefense
         return ResampleOnlyDefense(**kwargs)

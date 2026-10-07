@@ -42,11 +42,15 @@ def main() -> int:
     ap.add_argument("--run", required=True)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dangerzone-cmd", default="dangerzone-cli")
+    ap.add_argument("--embed", choices=["jpeg", "lossless"], default="jpeg",
+                    help="how the image enters the PDF: 'jpeg' is the legacy baseline "
+                         "adapter (contains a JPEG 75), 'lossless' embeds it byte-exact")
     args = ap.parse_args()
     lay = RunLayout(Path(args.run))
-    dz_dir = lay.root / "dz"
+    dz_dir = lay.root / ("dz" if args.embed == "jpeg" else "dz_ll")
     dz_dir.mkdir(parents=True, exist_ok=True)
-    defense = DangerzoneDefense(cli=args.dangerzone_cmd)
+    defense = DangerzoneDefense(cli=args.dangerzone_cmd, embed=args.embed)
+    log.info("adapter embed=%s -> %s", args.embed, dz_dir)
 
     rows = [json.loads(l) for l in lay.attack_results.open() if l.strip()]
     if args.limit:

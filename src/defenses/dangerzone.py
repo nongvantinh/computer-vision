@@ -24,21 +24,31 @@ from pathlib import Path
 from PIL import Image
 
 from .base import Defense
+from .pdfwrap import write_pdf
 
 
 class DangerzoneDefense(Defense):
-    name = "dangerzone"
+    """Dangerzone through the image -> PDF -> raster adapter.
 
-    def __init__(self, cli: str | None = None, timeout_s: int = 300):
+    `embed` selects how the image enters the PDF (see pdfwrap.py):
+      "jpeg"      legacy baseline adapter; Pillow re-encodes the image as JPEG 75
+                  before Dangerzone sees it. Name: "dangerzone".
+      "lossless"  byte-exact Flate embedding, no hidden JPEG. Name: "dangerzone_ll".
+    """
+
+    def __init__(self, cli: str | None = None, timeout_s: int = 300,
+                 embed: str = "jpeg"):
         self.cli = cli or os.environ.get("DANGERZONE_CMD", "dangerzone-cli")
         self.timeout_s = timeout_s
+        self.embed = embed
+        self.name = "dangerzone" if embed == "jpeg" else "dangerzone_ll"
 
     def _apply(self, img: Image.Image) -> tuple[Image.Image, dict]:
         w, h = img.size
         with tempfile.TemporaryDirectory() as td:
             src_pdf = Path(td) / "in.pdf"
             safe_pdf = Path(td) / "in-safe.pdf"
-            img.convert("RGB").save(src_pdf, "PDF", resolution=96.0)
+            write_pdf(img, src_pdf, embed=self.embed)
             cmd = [self.cli, "--output-filename", str(safe_pdf), str(src_pdf)]
             proc = subprocess.run(cmd, capture_output=True, timeout=self.timeout_s)
             if proc.returncode != 0 or not safe_pdf.exists():
@@ -55,4 +65,5 @@ class DangerzoneDefense(Defense):
                 check=True, capture_output=True, timeout=self.timeout_s)
             page = Image.open(str(stem) + ".png").convert("RGB")
             page = page.resize((w, h), Image.LANCZOS)
-        return page, {"op": "dangerzone", "cli": self.cli, "size": page.size}
+        return page, {"op": "dangerzone", "cli": self.cli, "embed": self.embed,
+                      "size": page.size}
