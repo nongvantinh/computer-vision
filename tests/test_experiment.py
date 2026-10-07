@@ -23,7 +23,7 @@ from src.attacks.targeted_pgd import AttackResult, project_linf
 def stub_attack(monkeypatch):
     """Replace the torch PGD with a numpy stub so the scheduler is testable on CPU
     without torch. The attack math itself is covered by test_pgd_constraint."""
-    def fake_pgd(model, clean, question, target, cfg):
+    def fake_pgd(model, clean, question, target, cfg, defense=None):
         rng = np.random.default_rng(cfg.seed)
         noise = rng.uniform(-cfg.epsilon, cfg.epsilon, size=clean.shape).astype(np.float32)
         adv = project_linf(clean + noise, clean, cfg.epsilon)

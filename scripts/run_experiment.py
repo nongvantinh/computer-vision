@@ -51,6 +51,9 @@ def main() -> int:
     ap.add_argument("--attack-source", default=None,
                     help="path to another run dir whose adv/*.npy are reused; makes "
                          "this a defense-only run (no attack is crafted)")
+    ap.add_argument("--adaptive-defense", default=None,
+                    help="defense-aware attack: PGD optimizes through this defense "
+                         "(jpeg50, jpeg90, dangerzone, dangerzone_ll)")
     ap.add_argument("--experiment-id", default=None,
                     help="label stored in config.json meta (e.g. controls_v1)")
     ap.add_argument("--defenses", default=None,
@@ -73,8 +76,10 @@ def main() -> int:
         raise SystemExit(f"--attack-source has no adv/ directory: {args.attack_source}")
     meta = {"experiment_id": args.experiment_id or args.run_id,
             "attack_family": "pixel_pgd",
-            "attack_id": "pgd_oblivious",
-            "threat_model": "non_adaptive",
+            "attack_id": (f"pgd_adaptive_{args.adaptive_defense}"
+                          if args.adaptive_defense else "pgd_oblivious"),
+            "threat_model": "adaptive" if args.adaptive_defense else "non_adaptive",
+            "attack_defense": args.adaptive_defense,
             "model_key": cfg["model"]["model_id"],
             "attack_source": str(args.attack_source) if args.attack_source else None}
     if args.resume:
@@ -98,6 +103,11 @@ def main() -> int:
     size = cfg["dataset"]["image_size"]
     mnt = cfg["evaluation"]["max_new_tokens"]
 
+    attack_defense = None
+    if args.adaptive_defense:
+        from src.defenses.differentiable import build_adaptive_defense
+        attack_defense = build_adaptive_defense(args.adaptive_defense)
+        log.info("ADAPTIVE attack: optimizing through %r", args.adaptive_defense)
     log.info("running %d images x %d eps x %d defenses (limit=%s)",
              len(ds), len(acfg["epsilon"]), len(defenses), args.limit)
     run_experiment(model, ds, defenses, lay,
@@ -105,7 +115,8 @@ def main() -> int:
                    pgd_step_size=acfg["step_size"],
                    pgd_random_start=acfg["random_start"], seed=cfg["seed"],
                    image_size=size, max_new_tokens=mnt, deadline=deadline,
-                   limit=args.limit, attack_source=attack_source)
+                   limit=args.limit, attack_source=attack_source,
+                   attack_defense=attack_defense)
 
     summary = aggregate(lay)
     log.info("coverage: %s", summary)

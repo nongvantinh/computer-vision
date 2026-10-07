@@ -49,15 +49,39 @@ def _clean_reference(model, ds, s, image_size, max_new_tokens, cache):
     return cache[s.image_id]
 
 
+def _defense_diagnostic(model, clean, prompt, target, defense) -> dict:
+    """Evidence that the defense really sits in the attack's loss path.
+
+    On the clean image, the loss with and without the defense must differ (otherwise
+    the defense is a no-op for this model), and the gradient through the defense must
+    be finite and non-zero. Recorded in the attack job so a reviewer can check it.
+    """
+    torch = model.torch
+    x = model.make_image_tensor(clean, requires_grad=True)
+    raw = model.target_loss(x, prompt, target)
+    xd = defense(x.permute(2, 0, 1).unsqueeze(0))
+    dl = model.target_loss(xd, prompt, target)
+    g = torch.autograd.grad(dl, x)[0]
+    return {"diag_loss_raw_clean": float(raw.detach().cpu()),
+            "diag_loss_defended_clean": float(dl.detach().cpu()),
+            "diag_grad_finite": bool(torch.isfinite(g).all().item()),
+            "diag_grad_abs_mean": float(g.abs().mean().item())}
+
+
 def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                    epsilons, pgd_steps, pgd_step_size, pgd_random_start, seed,
                    image_size=336, max_new_tokens=16,
-                   deadline=None, limit=None, attack_source=None) -> dict:
+                   deadline=None, limit=None, attack_source=None,
+                   attack_defense=None) -> dict:
     """Run clean + attack + defense jobs, image by image, resumably.
 
     `attack_source` (a RunLayout) makes this a defense-only run: adversarial images
     are read from that run and no attack is crafted, so new defenses or controls are
     evaluated on exactly the same adversarial pixels as the baseline.
+
+    `attack_defense` (a callable, see defenses/differentiable.py) makes the attack
+    defense-aware: PGD optimizes through it. Everything else about the attack stays
+    identical, so adaptive and oblivious attacks differ only by the defense in the loop.
     """
     ref_cache: dict = {}
     made = {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0,
@@ -117,10 +141,13 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     continue
             elif not (is_done(ajp) and adv is not None):
                 t0 = time.perf_counter()
+                diag = _defense_diagnostic(model, clean, ds.prompt, s.target_class_name,
+                                           attack_defense) if attack_defense else {}
                 r = targeted_pgd(model, clean, ds.prompt, s.target_class_name,
                                  PGDConfig(epsilon=eps, steps=pgd_steps,
                                            step_size=pgd_step_size,
-                                           random_start=pgd_random_start, seed=seed))
+                                           random_start=pgd_random_start, seed=seed),
+                                 defense=attack_defense)
                 adv = r.adv_image
                 store.save_adv_image(lay, s.image_id, eps, clean, adv)
                 atomic_write_json(ajp, {
@@ -132,7 +159,9 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     "loss_first": r.losses[0] if r.losses else None,
                     "loss_last": r.losses[-1] if r.losses else None,
                     "attack_runtime_s": time.perf_counter() - t0,
-                    "model": model.cfg.model_id})
+                    "model": model.cfg.model_id,
+                    "defense_in_loop": r.defense_name,
+                    "defense_calls": r.defense_calls, **diag})
                 made["attack"] += 1
                 log.info("attack done %s eps=%.4f loss %.2f -> %.2f (%.0fs, %d this session)",
                          s.image_id, eps, r.losses[0] if r.losses else float("nan"),

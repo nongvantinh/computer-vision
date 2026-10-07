@@ -37,11 +37,21 @@ class AttackResult:
     epsilon: float = 0.0
     steps: int = 0
     linf: float = 0.0
+    defense_name: str | None = None      # None = defense-oblivious
+    defense_calls: int = 0                # forward calls through the defense (proof of use)
 
 
 def targeted_pgd(model, image_np: np.ndarray, question: str, target_answer: str,
-                 cfg: PGDConfig) -> AttackResult:
-    """Run PGD on one image. `model` is a LlavaWrapper-like object."""
+                 cfg: PGDConfig, defense=None, eot_samples: int = 1) -> AttackResult:
+    """Run PGD on one image. `model` is a LlavaWrapper-like object.
+
+    `defense=None` is the defense-oblivious baseline: the loss is taken on the image
+    itself. With a `defense` (a callable on (1, 3, H, W) tensors in [0, 1], see
+    src/defenses/differentiable.py) the loss is taken on defense(x), so the attack
+    optimizes THROUGH the defense; nothing else (budget, steps, step size, seed,
+    initialization, projection) changes. `eot_samples > 1` averages the loss over
+    that many calls, for a stochastic defense.
+    """
     torch = model.torch
     clean = np.asarray(image_np, dtype=np.float32)
     rng = np.random.default_rng(cfg.seed)
@@ -54,9 +64,18 @@ def targeted_pgd(model, image_np: np.ndarray, question: str, target_answer: str,
 
     clean_t = torch.tensor(clean, device=model.device)
     losses: list[float] = []
+    calls = 0
     for _ in range(cfg.steps):
         x = model.make_image_tensor(adv, requires_grad=True)
-        loss = model.target_loss(x, question, target_answer)   # minimize (targeted)
+        if defense is None:
+            loss = model.target_loss(x, question, target_answer)   # minimize (targeted)
+        else:
+            k = max(1, int(eot_samples))
+            loss = 0.0
+            for _s in range(k):
+                x_def = defense(x.permute(2, 0, 1).unsqueeze(0))   # HWC -> NCHW
+                calls += 1
+                loss = loss + model.target_loss(x_def, question, target_answer) / k
         grad = torch.autograd.grad(loss, x)[0]
         losses.append(float(loss.detach().cpu()))
         with torch.no_grad():
@@ -70,4 +89,6 @@ def targeted_pgd(model, image_np: np.ndarray, question: str, target_answer: str,
     adv = project_linf(adv, clean, cfg.epsilon)  # final safety projection
     return AttackResult(adv_image=adv, losses=losses, epsilon=cfg.epsilon,
                         steps=cfg.steps,
-                        linf=float(np.max(np.abs(adv - clean))))
+                        linf=float(np.max(np.abs(adv - clean))),
+                        defense_name=getattr(defense, "name", None) if defense else None,
+                        defense_calls=calls)

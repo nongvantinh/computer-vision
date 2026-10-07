@@ -19,6 +19,7 @@ Tensors are (N, 3, H, W) float32 in [0, 1], the layout of LlavaWrapper.
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import numpy as np
 
@@ -180,3 +181,80 @@ class DifferentiableJpeg:
     def __call__(self, x):
         """BPDA: forward = real Pillow JPEG (bit-exact), backward = surrogate Jacobian."""
         return bpda_apply(self, x)
+
+
+class FittedLinearSurrogate:
+    """Differentiable stand-in for the Dangerzone adapter's resampling chain.
+
+    The chain after the (optional) JPEG is poppler's 150 dpi raster (a 1.5625x
+    upscale), Dangerzone, and a Lanczos downscale. It is close to a separable linear
+    operator, y = C (B x B^T) + b, with B banded. B, C and b are FITTED to real
+    (input, output) pairs by scripts/fit_dangerzone_surrogate.py and loaded from an
+    .npz; the fit report (held-out PSNR/SSIM) sits next to it. This is an
+    approximation. It never replaces the real tool in the final evaluation.
+    """
+
+    def __init__(self, npz_path, torch_module=None):
+        import torch
+        self.torch = torch_module or torch
+        d = np.load(npz_path)
+        t = self.torch
+        self.B = t.from_numpy(d["B"].astype(np.float32))
+        self.C = t.from_numpy(d["C"].astype(np.float32))
+        self.b = t.from_numpy(d["b"].astype(np.float32))
+        self.name = Path(npz_path).stem
+
+    def surrogate(self, x):
+        t = self.torch
+        B, C, b = (a.to(x.device, x.dtype) for a in (self.B, self.C, self.b))
+        if x.shape[-1] != B.shape[0] or x.shape[-2] != B.shape[0]:
+            raise ValueError(f"surrogate was fitted for {tuple(B.shape)} images, "
+                             f"got {tuple(x.shape[-2:])}")
+        z = B @ x @ B.T
+        y = t.einsum("cd,ndhw->nchw", C, z) + b.view(1, 3, 1, 1)
+        return _round(t, y.clamp(0.0, 1.0) * 255.0, "ste") / 255.0
+
+    def __call__(self, x):
+        # no real forward is available in the attack process: surrogate in both passes
+        return self.surrogate(x)
+
+
+class ChainedDefense:
+    """f2(f1(x)) where each stage is a defense with a bit-exact or surrogate forward."""
+
+    def __init__(self, *stages, name="chain"):
+        self.stages = stages
+        self.name = name
+
+    def __call__(self, x):
+        for s in self.stages:
+            x = s(x)
+        return x
+
+
+SURROGATE_DIR = Path(__file__).resolve().parents[2] / "configs" / "surrogates"
+
+
+def build_adaptive_defense(name: str, surrogate_dir: Path | None = None):
+    """The in-loop defense an adaptive attacker optimizes through, by defense name.
+
+    jpegQ          real Pillow forward + differentiable JPEG backward (BPDA)
+    dangerzone_ll  fitted resampling surrogate (lossless adapter)
+    dangerzone     JPEG 75 (real forward, BPDA) followed by the fitted surrogate
+    """
+    d = Path(surrogate_dir) if surrogate_dir else SURROGATE_DIR
+    n = name.lower()
+    if n.startswith("jpeg") and n[4:].isdigit():
+        j = DifferentiableJpeg(int(n[4:]))
+        j.name = n
+        return j
+    if n == "dangerzone_ll":
+        s = FittedLinearSurrogate(d / "dangerzone_lossless.npz")
+        s.name = "dangerzone_ll"
+        return s
+    if n == "dangerzone":
+        c = ChainedDefense(DifferentiableJpeg(75),
+                           FittedLinearSurrogate(d / "dangerzone_jpeg.npz"),
+                           name="dangerzone")
+        return c
+    raise ValueError(f"no adaptive (in-loop) defense for {name!r}")
