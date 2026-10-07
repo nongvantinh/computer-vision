@@ -1,0 +1,43 @@
+# Pre-declared analysis plan (version 1). Written before the adaptive pilot.
+#
+# Every number in the report must come from `scripts/run_analysis.py` under this plan.
+# Changing the plan after seeing results is allowed only by bumping `version` and
+# recording why in docs/experiment_summary.md.
+version: 1
+alpha: 0.05
+baseline_defense: D0
+ci_method: clopper-pearson        # exact binomial intervals for every rate
+test: exact-mcnemar               # paired, two-sided, exact binomial on discordant pairs
+paired_diff_ci: newcombe-10       # interval for a paired difference in rates
+multiplicity: holm                # Holm-Bonferroni within each family below
+
+# PRIMARY family: the hypotheses the study is designed to answer. Holm correction is
+# applied across ALL primary comparisons of one run (every listed pair at every
+# epsilon). A defense missing from a run is skipped and listed under "skipped".
+primary:
+  # RQ1: does each defense reduce targeted ASR relative to no defense?
+  defense_vs_baseline:
+    - jpeg90
+    - jpeg75
+    - jpeg50
+    - dangerzone
+    - mdcore
+  # RQ2 / RQ7: does a CDR implementation differ from generic JPEG re-encoding?
+  cdr_vs_generic:
+    cdr: [dangerzone, mdcore]
+    generic: [jpeg90, jpeg75, jpeg50]
+  # RQ3: does real Dangerzone differ from our own PDF-resampling adapter alone?
+  cdr_vs_control:
+    - [dangerzone, adapter_only]
+
+# EXPLORATORY family: every other pair of conditions present in the run (controls,
+# extra JPEG qualities, noise). Reported with its own Holm family and labelled
+# exploratory; never used for a headline claim.
+exploratory:
+  all_other_pairs: true
+
+# Utility is reported per defense (not tested): preservation on clean images with an
+# exact interval, and restoration on attacked images per epsilon.
+utility:
+  preservation: true
+  restoration: true

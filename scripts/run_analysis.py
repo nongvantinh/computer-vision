@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.utils.logging import get_logger  # noqa: E402
 from src.utils.resume import atomic_write_json  # noqa: E402
 from src.evaluation.statistics import (mcnemar, bootstrap_ci, paired_diff_ci,  # noqa: E402
-                                       holm_bonferroni)
+                                       holm_bonferroni, clopper_pearson)
+from src.evaluation.analysis_v2 import analyze_run  # noqa: E402
 from src.analysis.frontier import plot_frontier  # noqa: E402
 from src.experiment.layout import RunLayout  # noqa: E402
 from src.experiment.aggregate import aggregate  # noqa: E402
@@ -36,6 +37,9 @@ def main() -> int:
     ap.add_argument("--epsilon", type=float, default=None,
                     help="epsilon for the frontier/McNemar family (default: max)")
     ap.add_argument("--seed", type=int, default=1234)
+    ap.add_argument("--plan", default=str(Path(__file__).resolve().parents[1]
+                                          / "configs" / "analysis_plan.yaml"),
+                    help="pre-declared analysis plan (families of comparisons)")
     args = ap.parse_args()
     lay = RunLayout(Path(args.run))
     aggregate(lay)  # refresh derived files from jobs first
@@ -55,8 +59,9 @@ def main() -> int:
     for d in defenses:
         sub = [r["preserved"] for r in cleanrows if r["defense"] == d]
         if sub:
-            p, lo, hi = bootstrap_ci(np.array(sub), seed=args.seed)
-            preservation[d] = {"preservation": p, "ci95": [lo, hi], "n": len(sub)}
+            p, lo, hi = clopper_pearson(int(np.sum(sub)), len(sub))
+            preservation[d] = {"preservation": p, "ci95": [lo, hi], "n": len(sub),
+                               "ci_method": "clopper-pearson"}
 
     # per-image target-success vectors keyed (defense, epsilon), aligned by image_id
     def vec(defense, eps):
@@ -74,11 +79,11 @@ def main() -> int:
             tv, rv, _ = vec(d, e)
             if tv.size == 0:
                 continue
-            ap_, alo, ahi = bootstrap_ci(tv, seed=args.seed)
-            rp_, rlo, rhi = bootstrap_ci(rv, seed=args.seed)
+            ap_, alo, ahi = clopper_pearson(int(tv.sum()), int(tv.size))
+            rp_, rlo, rhi = clopper_pearson(int(rv.sum()), int(rv.size))
             asr[f"{d}@{e:.4f}"] = {"asr": ap_, "asr_ci95": [alo, ahi],
                                    "restoration": rp_, "restoration_ci95": [rlo, rhi],
-                                   "n": int(tv.size)}
+                                   "n": int(tv.size), "ci_method": "clopper-pearson"}
 
     # 2) McNemar family at eps_plot: each defense vs D0, and each other vs each JPEG
     jpeg = [d for d in defenses if d.startswith("jpeg")]
@@ -164,6 +169,19 @@ def main() -> int:
              "holm_bonferroni": holm, "mechanism": mech_summary,
              "tradeoff_plot": str(plot_path)}
     atomic_write_json(lay.statistics, stats)
+
+    # v2: plan-driven families, exact tests, all epsilons, reproducible from rows
+    import yaml
+    plan = yaml.safe_load(Path(args.plan).read_text())
+    cfg = json.loads(lay.config.read_text()) if lay.config.exists() else {}
+    meta = dict(cfg.get("meta", {}))
+    meta.update({"run_dir": lay.root.name, "plan_file": Path(args.plan).name,
+                 "n_defense_rows": len(defrows), "n_clean_rows": len(cleanrows)})
+    v2 = analyze_run(defrows, cleanrows, plan, meta)
+    atomic_write_json(lay.root / "analysis_v2.json", v2)
+    log.info("wrote %s (primary family %d, exploratory %d)",
+             lay.root / "analysis_v2.json", v2["family_sizes"]["primary"],
+             v2["family_sizes"]["exploratory"])
     from src.analysis.figures import all_figures
     made = all_figures(stats, lay.root / "plots")
     log.info("wrote %s, %s, figures: %s", lay.statistics, plot_path, list(made))

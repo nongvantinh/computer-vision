@@ -1,0 +1,19 @@
+{
+ "tag": "baseline-nonadaptive-v1",
+ "commit": "1b55b96",
+ "run": "full_200",
+ "note": "top-level result files only; local copy lacks the 776 Dangerzone job files, so defense_results.jsonl here is the pre-Phase-C version",
+ "sha256": {
+  "attack_results.jsonl": "32b7c7fe238a7e7edeede0ad3de277e1e2cb24237bbc553d5fdf716a2cae6b09",
+  "clean_results.jsonl": "a529684d02d83710c858a37321c0c3938fd87b8adad30b0610295b833dc429a3",
+  "config.json": "2e38c09b6bf9c982e67d735514e74dbf9b1556a100824280bc82215b97bb5453",
+  "dataset_manifest.json": "6c4980a7ca68c9c0af3a3b06165b3f0de881b8759cc6de7e5372e52d55f24c22",
+  "defense_info.json": "d85123a57b31c44edeb4c5aed8c4a4fcd49c1dcbe3d166e21e184ef8fadc489d",
+  "defense_results.jsonl": "8d1b91493840eb56ff3a80e505948859d341a41fd69f9d2ab27bcfeeaeaa0feb",
+  "environment.json": "faf6606409348fcbec1b0a242ded9176ae87eecdc637e01087b07e6271e89525",
+  "model_info.json": "6b84c6df221350e6f9beac36874d8e0299c4f79c7cef2c755b81481bae0d9e17",
+  "progress.json": "b916a8151256d673e3298ad74f3082febd6bd3c13be83d8e36d22b1e04907411",
+  "statistics.json": "97fbf7f2c1e668a014b2b2ef6da637eabbf10ba9dae0adc7b4f63132af3428c4",
+  "summary.json": "0e1c9a32d2d598cf7885d7d4d4c90d638de439b1c4aa3a72295f9549d43727b8"
+ }
+}
