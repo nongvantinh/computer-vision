@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.utils.config import load_config  # noqa: E402
 from src.utils.logging import get_logger, seed_everything  # noqa: E402
 from src.evaluation.runner import build_model, build_defenses, build_dataset  # noqa: E402
-from src.experiment.layout import create_run, load_run, RUNS_ROOT  # noqa: E402
+from src.experiment.layout import create_run, load_run, RUNS_ROOT, RunLayout  # noqa: E402
 from src.experiment.run import run_experiment  # noqa: E402
 from src.experiment.aggregate import aggregate  # noqa: E402
 from src.experiment import store  # noqa: E402
@@ -48,6 +48,11 @@ def main() -> int:
     ap.add_argument("--steps", type=int, default=None, help="override PGD steps (pilot)")
     ap.add_argument("--epsilon", type=float, action="append", default=None,
                     help="override epsilon(s); repeatable (pilot)")
+    ap.add_argument("--attack-source", default=None,
+                    help="path to another run dir whose adv/*.npy are reused; makes "
+                         "this a defense-only run (no attack is crafted)")
+    ap.add_argument("--experiment-id", default=None,
+                    help="label stored in config.json meta (e.g. controls_v1)")
     ap.add_argument("--defenses", default=None,
                     help="comma-separated defense override, e.g. D0,jpeg90,dangerzone")
     args = ap.parse_args()
@@ -63,12 +68,22 @@ def main() -> int:
     seed_everything(cfg["seed"])
 
     base = Path(args.runs_base) if args.runs_base else None
+    attack_source = RunLayout(Path(args.attack_source)) if args.attack_source else None
+    if attack_source is not None and not attack_source.adv.exists():
+        raise SystemExit(f"--attack-source has no adv/ directory: {args.attack_source}")
+    meta = {"experiment_id": args.experiment_id or args.run_id,
+            "attack_family": "pixel_pgd",
+            "attack_id": "pgd_oblivious",
+            "threat_model": "non_adaptive",
+            "model_key": cfg["model"]["model_id"],
+            "attack_source": str(args.attack_source) if args.attack_source else None}
     if args.resume:
         lay = load_run(args.run_id, base=base)
-        create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base)
+        create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base, meta=meta)
         log.info("resuming run %s (%s)", args.run_id, lay.root)
     else:
-        lay = create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base)
+        lay = create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base,
+                         meta=meta)
         log.info("created run %s (%s)", args.run_id, lay.root)
 
     deadline = time.time() + args.max_hours * 3600 if args.max_hours else None
@@ -90,7 +105,7 @@ def main() -> int:
                    pgd_step_size=acfg["step_size"],
                    pgd_random_start=acfg["random_start"], seed=cfg["seed"],
                    image_size=size, max_new_tokens=mnt, deadline=deadline,
-                   limit=args.limit)
+                   limit=args.limit, attack_source=attack_source)
 
     summary = aggregate(lay)
     log.info("coverage: %s", summary)

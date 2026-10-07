@@ -128,7 +128,8 @@ def test_resume_skips_finished_jobs(tmp_path):
         StubModel(), StubDS(n=3), _defenses(), lay,
         epsilons=[8 / 255], pgd_steps=2, pgd_step_size=1 / 255,
         pgd_random_start=True, seed=1234, image_size=32, max_new_tokens=4)
-    assert made2 == {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0}
+    assert made2 == {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0,
+                     "missing_adv": 0, "mismatched_adv": 0}
 
 
 def test_aggregate_writes_derived_tables(tmp_path):
@@ -139,3 +140,49 @@ def test_aggregate_writes_derived_tables(tmp_path):
     assert lay.defense_results.exists()
     assert summary["adv_images"] == 3
     assert summary["n_attack_jobs"] == 3
+
+
+def _defense_only_run(tmp_path, source, defenses, run_id="ctl"):
+    cfg = {"model": {"model_id": "stub/model"}, "defenses": list(defenses), "dataset": {}}
+    lay = create_run(run_id, cfg, {"steps": 2}, base=tmp_path,
+                     meta={"experiment_id": run_id, "attack_source": str(source.root)})
+    made = run_experiment(
+        StubModel(), StubDS(n=3), defenses, lay,
+        epsilons=[8 / 255], pgd_steps=2, pgd_step_size=1 / 255,
+        pgd_random_start=True, seed=1234, image_size=32, max_new_tokens=4,
+        attack_source=source)
+    return lay, made
+
+
+def test_attack_source_reuses_adv_and_crafts_nothing(tmp_path):
+    base, _ = _run(tmp_path)
+    before = sorted(p.name for p in base.adv.glob("*.npy"))
+    lay, made = _defense_only_run(tmp_path, base, {"D0": Identity()})
+    assert made["attack"] == 0 and made["defense"] == 3
+    assert not list(lay.adv.glob("*.npy"))              # nothing crafted or copied
+    assert not list(lay.attack_jobs.glob("*.json"))
+    assert sorted(p.name for p in base.adv.glob("*.npy")) == before   # source untouched
+    # the defense rows are the same adversarial pixels: D0 answers match the baseline
+    import json
+    a = {json.loads(p.read_text())["image_id"]: json.loads(p.read_text())["answer"]
+         for p in lay.defense_jobs.glob("*__D0.json")}
+    b = {json.loads(p.read_text())["image_id"]: json.loads(p.read_text())["answer"]
+         for p in base.defense_jobs.glob("*__D0.json")}
+    assert a == b and len(a) == 3
+    meta = json.loads(lay.config.read_text())["meta"]
+    assert meta["attack_source"] == str(base.root)
+
+
+def test_attack_source_missing_adv_is_counted_not_crafted(tmp_path):
+    base, _ = _run(tmp_path)
+    next(base.adv.glob("*.npy")).unlink()
+    lay, made = _defense_only_run(tmp_path, base, {"D0": Identity()})
+    assert made["missing_adv"] == 1 and made["attack"] == 0 and made["defense"] == 2
+
+
+def test_attack_source_rejects_adv_that_does_not_match_the_clean_image(tmp_path):
+    base, _ = _run(tmp_path)
+    npy = next(base.adv.glob("*.npy"))
+    np.save(npy, np.ones((32, 32, 3), dtype=np.float32))     # far outside the eps ball
+    lay, made = _defense_only_run(tmp_path, base, {"D0": Identity()})
+    assert made["mismatched_adv"] == 1 and made["defense"] == 2

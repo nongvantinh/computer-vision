@@ -52,10 +52,16 @@ def _clean_reference(model, ds, s, image_size, max_new_tokens, cache):
 def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                    epsilons, pgd_steps, pgd_step_size, pgd_random_start, seed,
                    image_size=336, max_new_tokens=16,
-                   deadline=None, limit=None) -> dict:
-    """Run clean + attack + defense jobs, image by image, resumably."""
+                   deadline=None, limit=None, attack_source=None) -> dict:
+    """Run clean + attack + defense jobs, image by image, resumably.
+
+    `attack_source` (a RunLayout) makes this a defense-only run: adversarial images
+    are read from that run and no attack is crafted, so new defenses or controls are
+    evaluated on exactly the same adversarial pixels as the baseline.
+    """
     ref_cache: dict = {}
-    made = {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0}
+    made = {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0,
+            "missing_adv": 0, "mismatched_adv": 0}
 
     for s in _samples(ds, limit):
         if _deadline_passed(deadline):
@@ -94,7 +100,22 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                                           max_new_tokens, ref_cache)
             ajp = store.attack_job_path(lay, s.image_id, eps)
             adv = store.load_adv_image(lay, s.image_id, eps)
-            if not (is_done(ajp) and adv is not None):
+            if attack_source is not None:
+                # Reuse another run's stored adversarial images; never craft here.
+                adv = store.load_adv_image(attack_source, s.image_id, eps)
+                if adv is None:
+                    log.warning("no stored adversarial image for %s eps=%.4f in %s",
+                                s.image_id, eps, attack_source.root)
+                    made["missing_adv"] += 1
+                    continue
+                linf = float(np.max(np.abs(adv - clean)))
+                if adv.shape != clean.shape or linf > eps + 1e-4:
+                    # the stored array does not belong to this clean image/budget
+                    log.error("adv/clean mismatch for %s eps=%.4f (linf %.4f)",
+                              s.image_id, eps, linf)
+                    made["mismatched_adv"] += 1
+                    continue
+            elif not (is_done(ajp) and adv is not None):
                 t0 = time.perf_counter()
                 r = targeted_pgd(model, clean, ds.prompt, s.target_class_name,
                                  PGDConfig(epsilon=eps, steps=pgd_steps,

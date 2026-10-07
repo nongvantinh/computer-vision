@@ -18,6 +18,19 @@ def build_defense(name: str, **kwargs) -> Defense:
     if name == "dangerzone":
         from .dangerzone import DangerzoneDefense
         return DangerzoneDefense(**kwargs)
+    # controls: strip one ingredient out of a real defense (see controls.py)
+    if name == "adapter_only":
+        from .controls import AdapterOnlyDefense
+        return AdapterOnlyDefense(**kwargs)
+    if name == "resample_only":
+        from .controls import ResampleOnlyDefense
+        return ResampleOnlyDefense(**kwargs)
+    if name == "chroma_only":
+        from .controls import ChromaOnlyDefense
+        return ChromaOnlyDefense(**kwargs)
+    if name.startswith("noise") and name[5:].replace(".", "", 1).isdigit():
+        from .controls import TinyNoiseDefense
+        return TinyNoiseDefense(level=float(name[5:]), **kwargs)
     raise ValueError(f"unknown defense: {name}")
 
 

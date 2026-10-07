@@ -112,7 +112,7 @@ def _defense_info(cfg: dict) -> dict:
 
 def create_run(run_id: str, cfg: dict, attack_cfg: dict,
                manifest_path: str | Path | None = None,
-               base: Path | None = None) -> RunLayout:
+               base: Path | None = None, meta: dict | None = None) -> RunLayout:
     """Create (or resume) a run directory and write the reproducibility artifacts.
 
     Idempotent: an existing run_id is reused so a resumed session keeps its files.
@@ -124,7 +124,8 @@ def create_run(run_id: str, cfg: dict, attack_cfg: dict,
     for sub in SUBDIRS:
         (root / sub).mkdir(parents=True, exist_ok=True)
 
-    merged = {"experiment": cfg, "attack": attack_cfg, "run_id": run_id}
+    merged = {"experiment": cfg, "attack": attack_cfg, "run_id": run_id,
+              "meta": dict(meta or {})}
     atomic_write_json(lay.config, merged)
     atomic_write_json(lay.environment, capture_environment())
     lay.git_commit.write_text(_git_commit() + "\n")
