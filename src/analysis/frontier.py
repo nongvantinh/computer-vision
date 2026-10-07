@@ -27,16 +27,17 @@ def plot_frontier(points: dict[str, dict], out_path: str | Path,
                 "-o", color="#4c78a8", label="JPEG sweep (frontier)")
 
     markers = {"cdr": ("*", "#e45756", 240), "none": ("s", "#54a24b", 90)}
-    for name, v in points.items():
+    # Defended points often cluster; stagger label offsets so they stay readable.
+    offsets = [(6, 8), (6, -14), (-52, 8), (-52, -14), (6, 22)]
+    for i, (name, v) in enumerate(points.items()):
         g = v.get("group", "cdr")
-        if g == "jpeg":
-            lbl = None
-        else:
+        if g != "jpeg":
             m, c, s = markers.get(g, ("^", "#b279a2", 120))
             ax.scatter(v["clean_acc"], v["robust_acc"], marker=m, color=c, s=s,
                        zorder=5, label=name)
         ax.annotate(name, (v["clean_acc"], v["robust_acc"]),
-                    textcoords="offset points", xytext=(6, 4), fontsize=8)
+                    textcoords="offset points", xytext=offsets[i % len(offsets)],
+                    fontsize=8)
 
     ax.set_xlabel("Clean accuracy retained")
     ax.set_ylabel("Robust accuracy (1 - targeted ASR)")

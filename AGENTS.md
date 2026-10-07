@@ -158,8 +158,9 @@ The CLI login is interactive (per Google account); see
 - [x] Pilot complete: N=12, eps=8/255, five defenses, 0 failures
   (`results/runs/pilot_n12_eps8`, numbers in `results.md`). Pipeline validated end to end.
 - [x] Mechanism metric corrected to defense-controlled (`defended_adv - defended_clean`).
-- [ ] Final study: N=200, eps in {4,8,16}/255; ready to launch/resume across accounts
-  (`runbook.md`), then stats + mechanism + figures + report.
-- [ ] Final report (`docs/report/`).
+- [x] Final study: N=200, eps in {4,8,16}/255, 600 attacks, 3000 defense evaluations,
+  0 failed; Dangerzone via the decoupled workflow. Numbers in `results.md`.
+- [x] Final report (`docs/report/report.tex`, 7 pp). ICDR and the adaptive attacker
+  (RQ4) are not covered; see its limitations section.
 - [ ] Presentation (`slides/`).
 - Full audit: `docs/implementation/final-status.md`.

@@ -34,5 +34,17 @@ def test_all_figures_written(tmp_path):
     assert (tmp_path / "fig_asr_by_defense.pdf").exists()
 
 
+def test_defense_controlled_mechanism_is_plotted(tmp_path):
+    stats = {"mechanism": {
+        "D0": {"raw_highfreq_frac_mean": 0.82, "post_highfreq_frac_mean": 0.82,
+               "energy_ratio_mean": 1.0},
+        "dangerzone": {"raw_highfreq_frac_mean": 0.82, "post_highfreq_frac_mean": 0.61,
+                       "energy_ratio_mean": 0.59},
+    }}
+    made = figures.all_figures(stats, tmp_path)
+    assert set(made) == {"mechanism"}
+    assert (tmp_path / "fig_mechanism.png").stat().st_size > 5000
+
+
 def test_missing_sections_skip_cleanly(tmp_path):
     assert figures.all_figures({}, tmp_path) == {}

@@ -5,21 +5,19 @@ constraints a reviewer should weigh before generalizing anything from this study
 
 ## Scope of the defenses tested
 
-Both CDR tools are unavailable on the compute this project can reach, so the measured
-study compares D0 and three JPEG qualities. Claims are scoped accordingly: this is an
-evaluation of lossy input transforms as a defense, not of CDR as a category.
+The measured study compares D0, three JPEG qualities and one CDR tool, Dangerzone.
+Claims are scoped to that: this is an evaluation of lossy input transforms plus one
+deployed sanitizer, not of CDR as a category.
 
 ICDR is BLOCKED in principle (see `icdr.md`): the real `ArielCyber/ICDR` is built on
 the commercial Aspose.Imaging library, its committed code does not compile, and it has
 no open-source fallback. Nothing is substituted for it.
 
-Dangerzone is BLOCKED on available compute (see `dangerzone.md`), not in principle:
-the real tool installs and its image cosign-verifies, but it needs rootless Podman
-(`--userns nomap`), which the Colab host (root-only, locked-down kernel) cannot
-provide, and the local box is Docker-only without root. Because the attack and defense
-evaluation are decoupled (adversarial images persist as `adv/*.npy`), the D5 data
-point can be added later on a rootless-Podman host without recomputing the attack.
-Until then, any Dangerzone-specific claim is out of scope.
+Dangerzone cannot run on Colab (it needs rootless Podman with `--userns nomap`, and
+the Colab host is root-only with a locked-down kernel). It was run with the decoupled
+workflow: the attack and the model answers on Colab, the sanitizing locally on a
+rootless-Podman workstation. The adversarial images persist as `adv/*.npy`, so no input
+changes between the two hosts and the attack was never recomputed.
 
 ## The Dangerzone adapter
 

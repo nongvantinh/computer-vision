@@ -95,9 +95,33 @@ def mechanism_by_defense(stats: dict, out_dir: Path) -> list[Path]:
     if not mech:
         return []
     defenses = sorted(mech)
+    x = np.arange(len(defenses))
+    if any("post_highfreq_frac_mean" in mech[d] for d in defenses):
+        # Defense-controlled metric: residual = defended_adv - defended_clean.
+        nan = float("nan")
+        ratio = [mech[d].get("energy_ratio_mean", nan) for d in defenses]
+        raw_hf = [mech[d].get("raw_highfreq_frac_mean", nan) for d in defenses]
+        post_hf = [mech[d].get("post_highfreq_frac_mean", nan) for d in defenses]
+        fig, (ax1, ax2) = plt.subplots(
+            1, 2, figsize=(max(9, 2.0 * len(defenses)), 4.5))
+        ax1.bar(x, ratio, 0.6, color="#4c78a8")
+        ax1.axhline(1.0, color="black", lw=0.8, ls="--")
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(defenses, rotation=20, ha="right")
+        ax1.set_ylabel("Residual energy after / before")
+        ax1.set_title("Perturbation energy (1.0 = unchanged)")
+        ax2.bar(x - 0.2, raw_hf, 0.4, label="before defense", color="#9d9d9d")
+        ax2.bar(x + 0.2, post_hf, 0.4, label="after defense", color="#e45756")
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(defenses, rotation=20, ha="right")
+        ax2.set_ylabel("High-frequency share of residual")
+        ax2.set_ylim(0, 1)
+        ax2.set_title("Frequency content (mechanism evidence, not causal)")
+        ax2.legend(fontsize=8)
+        fig.tight_layout()
+        return _save(fig, out_dir, "fig_mechanism")
     removed = [mech[d].get("energy_removed_frac_mean", float("nan")) for d in defenses]
     res_hf = [mech[d].get("residual_highfreq_frac_mean", float("nan")) for d in defenses]
-    x = np.arange(len(defenses))
     fig, ax = plt.subplots(figsize=(max(6, 1.2 * len(defenses)), 4.5))
     ax.bar(x - 0.2, removed, 0.4, label="energy removed (frac)", color="#4c78a8")
     ax.bar(x + 0.2, res_hf, 0.4, label="residual high-freq (frac)", color="#e45756")
