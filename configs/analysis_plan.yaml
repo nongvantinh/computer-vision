@@ -1,9 +1,14 @@
-# Pre-declared analysis plan (version 1). Written before the adaptive pilot.
+# Pre-declared analysis plan (version 2). Written before any adaptive result exists.
 #
 # Every number in the report must come from `scripts/run_analysis.py` under this plan.
 # Changing the plan after seeing results is allowed only by bumping `version` and
-# recording why in docs/experiment_summary.md.
-version: 1
+# recording why in docs/phase2_preregistration.md (deviation log).
+#
+# v1 -> v2 (before the adaptive pilot): the Dangerzone adapter was found to embed the
+# image as JPEG 75 (src/defenses/pdfwrap.py), so the baseline condition `dangerzone`
+# contains a JPEG round trip. The real question about Dangerzone is now asked of
+# `dangerzone_ll` (lossless embedding), and legacy `dangerzone` is compared with JPEG 75.
+version: 2
 alpha: 0.05
 baseline_defense: D0
 ci_method: clopper-pearson        # exact binomial intervals for every rate
@@ -21,14 +26,18 @@ primary:
     - jpeg75
     - jpeg50
     - dangerzone
+    - dangerzone_ll
     - mdcore
   # RQ2 / RQ7: does a CDR implementation differ from generic JPEG re-encoding?
   cdr_vs_generic:
-    cdr: [dangerzone, mdcore]
+    cdr: [dangerzone_ll, mdcore]
     generic: [jpeg90, jpeg75, jpeg50]
-  # RQ3: does real Dangerzone differ from our own PDF-resampling adapter alone?
+  # RQ3: does real Dangerzone differ from the adapter alone? The legacy adapter embeds
+  # a JPEG 75, so legacy Dangerzone is also compared with plain JPEG 75.
   cdr_vs_control:
+    - [dangerzone_ll, adapter_only_ll]
     - [dangerzone, adapter_only]
+    - [dangerzone, jpeg75]
 
 # EXPLORATORY family: every other pair of conditions present in the run (controls,
 # extra JPEG qualities, noise). Reported with its own Holm family and labelled
@@ -41,3 +50,16 @@ exploratory:
 utility:
   preservation: true
   restoration: true
+
+# CONFIRMATORY adaptive-attack family (cross-run; see docs/phase2_preregistration.md).
+# Each test pairs the SAME images across two attack conditions, always scored through
+# the REAL defense. Holm correction runs over the six tests (3 per budget).
+confirmatory_adaptive:
+  epsilons: [0.0313725490, 0.0627450980]      # 8/255 and 16/255
+  minimum_effect_of_interest: 0.15            # absolute difference in targeted ASR
+  tests:
+    # H1: does an attacker that knows the defense recover success?
+    - {id: adaptive_vs_oblivious, defense: jpeg50}
+    - {id: adaptive_vs_oblivious, defense: dangerzone_ll}
+    # H2: under adaptive attack, does Dangerzone (lossless adapter) differ from JPEG 50?
+    - {id: cdr_vs_jpeg_adaptive, a: dangerzone_ll, b: jpeg50}

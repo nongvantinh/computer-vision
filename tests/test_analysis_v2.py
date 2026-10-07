@@ -65,24 +65,25 @@ def _rows(n=200, eps=(0.0157, 0.0627)):
             iid = f"img{i:03d}"
             for d, succ in (("D0", d0[i]),
                             ("jpeg50", d0[i] and i == 0),       # one survivor
-                            ("dangerzone", False),
-                            ("adapter_only", d0[i] and i < 3)):
+                            ("dangerzone_ll", False),
+                            ("adapter_only_ll", d0[i] and i < 3)):
                 defrows.append({"image_id": iid, "epsilon": e, "defense": d,
                                 "target_success": int(succ), "restored": int(not succ),
                                 "error": None})
     for i in range(n):
-        for d in ("D0", "jpeg50", "dangerzone", "adapter_only"):
+        for d in ("D0", "jpeg50", "dangerzone_ll", "adapter_only_ll"):
             cleanrows.append({"image_id": f"img{i:03d}", "defense": d,
                               "preserved": int(d == "D0" or i % 12 != 0), "error": None})
     return defrows, cleanrows
 
 
 def test_plan_resolution_skips_missing_defenses():
-    pairs, skipped = primary_pairs(PLAN, {"D0", "jpeg50", "dangerzone", "adapter_only"})
+    pairs, skipped = primary_pairs(
+        PLAN, {"D0", "jpeg50", "dangerzone_ll", "adapter_only_ll"})
     names = {(a, b) for a, b, _ in pairs}
-    assert ("dangerzone", "D0") in names and ("jpeg50", "D0") in names
-    assert ("dangerzone", "jpeg50") in names
-    assert ("dangerzone", "adapter_only") in names
+    assert ("dangerzone_ll", "D0") in names and ("jpeg50", "D0") in names
+    assert ("dangerzone_ll", "jpeg50") in names
+    assert ("dangerzone_ll", "adapter_only_ll") in names
     assert not any("mdcore" in p for p in names)
     assert any("mdcore" in s["missing"] for s in skipped)
 
@@ -91,17 +92,17 @@ def test_analyze_run_families_cells_and_holm():
     defrows, cleanrows = _rows()
     out = analyze_run(defrows, cleanrows, PLAN, {"run": "synthetic"})
     assert out["schema"] == "analysis_v2" and out["meta"]["run"] == "synthetic"
-    # primary: (jpeg50, dangerzone vs D0) + (dangerzone vs jpeg50) + (dangerzone vs adapter)
-    # = 4 pairs, at 2 epsilons
+    # primary: (jpeg50, dangerzone_ll vs D0) + (dangerzone_ll vs jpeg50)
+    # + (dangerzone_ll vs adapter_only_ll) = 4 pairs, at 2 epsilons
     assert out["family_sizes"]["primary"] == 8
-    zero = out["cells"]["dangerzone@0.0627"]["asr"]
+    zero = out["cells"]["dangerzone_ll@0.0627"]["asr"]
     assert zero["k"] == 0 and zero["n"] == 200 and zero["ci95"][1] > 0.01
-    vs_d0 = next(c for c in out["primary"] if c["id"] == "dangerzone_vs_D0@0.0627")
+    vs_d0 = next(c for c in out["primary"] if c["id"] == "dangerzone_ll_vs_D0@0.0627")
     assert vs_d0["family"] == "primary" and vs_d0["test"] == "exact-mcnemar"
     assert vs_d0["b_only"] == 0 and vs_d0["c_only"] == vs_d0["b_successes"] > 0
     assert vs_d0["reject_h0"] is True and vs_d0["p_adjusted"] >= vs_d0["p_raw"]
     # identical outcomes between the two stable defenses cannot be rejected
-    same = next(c for c in out["primary"] if c["id"] == "dangerzone_vs_adapter_only@0.0157")
+    same = next(c for c in out["primary"] if c["id"] == "dangerzone_ll_vs_adapter_only_ll@0.0157")
     assert same["p_adjusted"] <= 1.0
     # preservation uses exact intervals and excludes nothing silently
     assert out["preservation"]["D0"]["rate"] == 1.0
