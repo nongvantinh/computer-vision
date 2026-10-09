@@ -6,6 +6,9 @@ parameters below. Run directories are written on the VM's local disk and copied 
 Drive with rsync (many small job files are slow to write straight to Drive); every
 job is idempotent, so a reclaimed VM resumes where it stopped.
 
+STAGE may be one name or a comma-separated list; setup() (clone, deps, dataset,
+checkpoint 1) runs once and the stages then run in the order given.
+
 STAGE values
   controls      defense-only run on the STORED baseline adversarial images (no attack):
                 D0, JPEG 95/90/75/50/30/10, adapter_only(+_ll), resample_only,
@@ -152,8 +155,12 @@ STAGES = {"controls": stage_controls, "dz_answers": stage_dz_answers, "pilot": s
           "pilot_eval": stage_pilot_eval, "pilot_dz": stage_pilot_dz,
           "analysis": stage_analysis}
 
-if STAGE not in STAGES:
-    raise SystemExit(f"unknown STAGE {STAGE!r}; choose from {sorted(STAGES)}")
+todo = [s.strip() for s in STAGE.split(",") if s.strip()]
+bad = [s for s in todo if s not in STAGES]
+if bad:
+    raise SystemExit(f"unknown STAGE {bad}; choose from {sorted(STAGES)}")
 setup()
-STAGES[STAGE]()
-print("STAGE DONE:", STAGE, json.dumps({"branch": BRANCH, "dry_run": DRY_RUN}))
+for name in todo:
+    print(f"=== STAGE START: {name}", flush=True)
+    STAGES[name]()
+    print("STAGE DONE:", name, json.dumps({"branch": BRANCH, "dry_run": DRY_RUN}), flush=True)
