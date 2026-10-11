@@ -16,7 +16,10 @@ Live status file. Updated at each step; the commit history has the details.
 
 ## In progress
 
-- Extended adaptive JPEG 50 pilot (stage `jpeg_ext`), budgets 500, 1000, 2000 cumulative.
+- Extended adaptive JPEG 50 pilot (stage `jpeg_ext`, Colab, started 2026-10-11 14:53 UTC).
+  - 500 cumulative steps done: 4/10 succeed through real JPEG 50 (0/10 at 200 steps), median
+    defended loss 2.55 to 1.87 (26.6% lower), decision `continue`. JPEG 75 and 90 and D0 stay 0/10.
+  - 1000 cumulative steps running, about 14 minutes per image.
 
 ## Pending
 
