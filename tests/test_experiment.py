@@ -129,7 +129,7 @@ def test_resume_skips_finished_jobs(tmp_path):
         epsilons=[8 / 255], pgd_steps=2, pgd_step_size=1 / 255,
         pgd_random_start=True, seed=1234, image_size=32, max_new_tokens=4)
     assert made2 == {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0,
-                     "missing_adv": 0, "mismatched_adv": 0}
+                     "missing_adv": 0, "mismatched_adv": 0, "missing_init": 0}
 
 
 def test_aggregate_writes_derived_tables(tmp_path):

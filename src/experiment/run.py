@@ -72,7 +72,7 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                    epsilons, pgd_steps, pgd_step_size, pgd_random_start, seed,
                    image_size=336, max_new_tokens=16,
                    deadline=None, limit=None, attack_source=None,
-                   attack_defense=None) -> dict:
+                   attack_defense=None, init_source=None) -> dict:
     """Run clean + attack + defense jobs, image by image, resumably.
 
     `attack_source` (a RunLayout) makes this a defense-only run: adversarial images
@@ -82,10 +82,15 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
     `attack_defense` (a callable, see defenses/differentiable.py) makes the attack
     defense-aware: PGD optimizes through it. Everything else about the attack stays
     identical, so adaptive and oblivious attacks differ only by the defense in the loop.
+
+    `init_source` (a RunLayout) continues an earlier attack: each (image, epsilon) starts
+    from that run's stored adversarial image and takes `pgd_steps` MORE steps. The attack
+    job records the cumulative step count, so staged budgets (200, 500, 1000, ...) stay
+    traceable and the earlier run is never modified.
     """
     ref_cache: dict = {}
     made = {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0,
-            "missing_adv": 0, "mismatched_adv": 0}
+            "missing_adv": 0, "mismatched_adv": 0, "missing_init": 0}
 
     for s in _samples(ds, limit):
         if _deadline_passed(deadline):
@@ -140,13 +145,24 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     made["mismatched_adv"] += 1
                     continue
             elif not (is_done(ajp) and adv is not None):
+                init, steps_before = None, 0
+                if init_source is not None:
+                    init = store.load_adv_image(init_source, s.image_id, eps)
+                    if init is None:
+                        log.warning("no stored image to continue from for %s eps=%.4f in %s",
+                                    s.image_id, eps, init_source.root)
+                        made["missing_init"] += 1
+                        continue
+                    prev = store.read_attack_meta(init_source, s.image_id, eps) or {}
+                    steps_before = int(prev.get("steps_cumulative", prev.get("steps", 0)))
                 t0 = time.perf_counter()
                 diag = _defense_diagnostic(model, clean, ds.prompt, s.target_class_name,
                                            attack_defense) if attack_defense else {}
                 r = targeted_pgd(model, clean, ds.prompt, s.target_class_name,
                                  PGDConfig(epsilon=eps, steps=pgd_steps,
                                            step_size=pgd_step_size,
-                                           random_start=pgd_random_start, seed=seed),
+                                           random_start=pgd_random_start, seed=seed,
+                                           init_adv=init),
                                  defense=attack_defense)
                 adv = r.adv_image
                 store.save_adv_image(lay, s.image_id, eps, clean, adv)
@@ -156,6 +172,10 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     "clean_answer": ref, "linf": r.linf,
                     "l2": float(np.sqrt(np.mean((adv - clean) ** 2))),
                     "steps": pgd_steps, "step_size": pgd_step_size,
+                    "steps_cumulative": steps_before + pgd_steps,
+                    "init_from": str(init_source.root) if init_source is not None else None,
+                    "adv_sha256": store.adv_hash(adv),
+                    "loss_curve": [round(float(v), 4) for v in r.losses],
                     "loss_first": r.losses[0] if r.losses else None,
                     "loss_last": r.losses[-1] if r.losses else None,
                     "attack_runtime_s": time.perf_counter() - t0,
@@ -182,6 +202,7 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     rec = {"image_id": s.image_id, "class": s.class_name,
                            "target": s.target_class_name, "epsilon": eps,
                            "defense": dname, "clean_answer": ref, "answer": ans,
+                           "adv_sha256": store.adv_hash(adv),
                            "target_success": int(contains_target(ans, s.target_class_name)),
                            "restored": int(normalize_answer(ans) == ref),
                            "defense_runtime_s": res.runtime_s,

@@ -66,3 +66,54 @@ def g5_baseline_reproduction(new_rows: list[dict], base_rows: list[dict],
     agree = sum(b[k] == n[k] for k in shared) / len(shared) if shared else 0.0
     return {"gate": "G5", "passed": bool(shared) and agree >= min_agreement,
             "detail": {"n_shared": len(shared), "agreement": agree}}
+
+
+def g5_reproducibility(new_rows: list[dict], base_rows: list[dict], *,
+                       psnr_tol_db: float = 1e-3, min_success_agreement: float = 0.99,
+                       min_answer_agreement: float = 0.99) -> list[dict]:
+    """G5 as originally written, plus G5a and G5b (protocol revision 2026-10-11).
+
+    D0 rows of two runs are matched on (image, epsilon). The originally registered G5
+    (raw-answer agreement over ALL matched rows) is returned unchanged and may fail.
+
+    G5a is the primary reproducibility gate for the endpoint of the study: agreement of
+    `target_success` on rows whose model input is verifiably the same. Input identity is
+    `adv_sha256` when both rows carry it, otherwise equal `psnr_vs_clean` within
+    `psnr_tol_db` (a pixel-level proxy for runs recorded before hashes existed). Rows with
+    different inputs are listed, not scored: a different image is not a reproduction test.
+    G5b keeps raw-answer agreement as a diagnostic on the same identical-input rows.
+    """
+    key = lambda r: (r["image_id"], round(float(r["epsilon"]), 6))   # noqa: E731
+    ok = lambda r: r.get("defense") == "D0" and not r.get("error")  # noqa: E731
+    b = {key(r): r for r in base_rows if ok(r)}
+    n = {key(r): r for r in new_rows if ok(r)}
+    shared = sorted(set(b) & set(n))
+
+    def same_input(x, y):
+        if x.get("adv_sha256") and y.get("adv_sha256"):
+            return x["adv_sha256"] == y["adv_sha256"]
+        return abs(x["psnr_vs_clean"] - y["psnr_vs_clean"]) <= psnr_tol_db
+
+    ident = [k for k in shared if same_input(n[k], b[k])]
+    differ = [k for k in shared if k not in set(ident)]
+    ans = lambda k: n[k]["answer"] == b[k]["answer"]                # noqa: E731
+    suc = lambda k: int(n[k]["target_success"]) == int(b[k]["target_success"])  # noqa: E731
+    frac = lambda f, ks: (sum(f(k) for k in ks) / len(ks)) if ks else 0.0       # noqa: E731
+
+    g5 = {"gate": "G5", "passed": bool(shared) and frac(ans, shared) >= 0.99,
+          "detail": {"n_shared": len(shared), "agreement": frac(ans, shared),
+                     "definition": "original: raw-answer agreement over all matched rows"}}
+    disc_s = [k for k in ident if not suc(k)]
+    g5a = {"gate": "G5a", "passed": bool(ident) and frac(suc, ident) >= min_success_agreement,
+           "detail": {"n_identical_input": len(ident), "agreement": frac(suc, ident),
+                      "discordant_identical_input": [list(k) for k in disc_s],
+                      "n_input_differs": len(differ),
+                      "agreement_all_matched_rows": frac(suc, shared),
+                      "threshold": min_success_agreement,
+                      "input_differs_keys": [list(k) for k in differ]}}
+    g5b = {"gate": "G5b", "passed": bool(ident) and frac(ans, ident) >= min_answer_agreement,
+           "detail": {"n_identical_input": len(ident), "agreement": frac(ans, ident),
+                      "differing_answers_identical_input": sum(not ans(k) for k in ident),
+                      "differing_answers_input_differs": sum(not ans(k) for k in differ),
+                      "threshold": min_answer_agreement, "diagnostic": True}}
+    return [g5, g5a, g5b]

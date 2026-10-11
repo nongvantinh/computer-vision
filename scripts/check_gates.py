@@ -54,9 +54,9 @@ def main() -> int:
         def rows_of(p):
             l = RunLayout(Path(p))
             return [json.loads(x) for x in l.defense_results.open() if x.strip()]
-        res.append(gates.g5_baseline_reproduction(rows_of(args.controls_run), rows_of(args.baseline_run)))
+        res.extend(gates.g5_reproducibility(rows_of(args.controls_run), rows_of(args.baseline_run)))
     else:
-        res.append({"gate": "G5", "passed": None, "detail": "not evaluated"})
+        res.extend({"gate": g, "passed": None, "detail": "not evaluated"} for g in ("G5", "G5a", "G5b"))
     res.sort(key=lambda g: g["gate"])
     for g in res:
         print(f"{g['gate']}: {'PASS' if g['passed'] else ('not evaluated' if g['passed'] is None else 'FAIL')}"

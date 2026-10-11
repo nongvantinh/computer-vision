@@ -51,6 +51,12 @@ def main() -> int:
     ap.add_argument("--attack-source", default=None,
                     help="path to another run dir whose adv/*.npy are reused; makes "
                          "this a defense-only run (no attack is crafted)")
+    ap.add_argument("--init-from", default=None,
+                    help="continue an earlier attack: start every (image, eps) from the "
+                         "adversarial image stored in this run dir and take --steps more")
+    ap.add_argument("--manifest", default=None,
+                    help="dataset manifest to use instead of the one in the config "
+                         "(e.g. configs/screen_50.json)")
     ap.add_argument("--adaptive-defense", default=None,
                     help="defense-aware attack: PGD optimizes through this defense "
                          "(jpeg50, jpeg90, dangerzone, dangerzone_ll)")
@@ -66,6 +72,8 @@ def main() -> int:
         acfg["steps"] = args.steps
     if args.epsilon:
         acfg["epsilon"] = args.epsilon
+    if args.manifest:
+        cfg["dataset"]["manifest"] = args.manifest
     if args.defenses:
         cfg["defenses"] = [d.strip() for d in args.defenses.split(",") if d.strip()]
     seed_everything(cfg["seed"])
@@ -74,6 +82,9 @@ def main() -> int:
     attack_source = RunLayout(Path(args.attack_source)) if args.attack_source else None
     if attack_source is not None and not attack_source.adv.exists():
         raise SystemExit(f"--attack-source has no adv/ directory: {args.attack_source}")
+    init_source = RunLayout(Path(args.init_from)) if args.init_from else None
+    if init_source is not None and not init_source.adv.exists():
+        raise SystemExit(f"--init-from has no adv/ directory: {args.init_from}")
     meta = {"experiment_id": args.experiment_id or args.run_id,
             "attack_family": "pixel_pgd",
             "attack_id": (f"pgd_adaptive_{args.adaptive_defense}"
@@ -81,7 +92,9 @@ def main() -> int:
             "threat_model": "adaptive" if args.adaptive_defense else "non_adaptive",
             "attack_defense": args.adaptive_defense,
             "model_key": cfg["model"]["model_id"],
-            "attack_source": str(args.attack_source) if args.attack_source else None}
+            "attack_source": str(args.attack_source) if args.attack_source else None,
+            "init_from": str(args.init_from) if args.init_from else None,
+            "manifest": cfg["dataset"]["manifest"]}
     if args.resume:
         lay = load_run(args.run_id, base=base)
         create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base, meta=meta)
@@ -116,7 +129,7 @@ def main() -> int:
                    pgd_random_start=acfg["random_start"], seed=cfg["seed"],
                    image_size=size, max_new_tokens=mnt, deadline=deadline,
                    limit=args.limit, attack_source=attack_source,
-                   attack_defense=attack_defense)
+                   attack_defense=attack_defense, init_source=init_source)
 
     summary = aggregate(lay)
     log.info("coverage: %s", summary)

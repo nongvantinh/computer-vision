@@ -28,6 +28,10 @@ class PGDConfig:
     step_size: float = 1 / 255
     random_start: bool = True
     seed: int = 1234
+    # Continue an earlier run: start from this array (inside the ball) instead of a random
+    # start. The update is sign-gradient with a constant step and no momentum, so the
+    # iterate is the whole state and N steps then M steps equals N + M steps in one go.
+    init_adv: object = None
 
 
 @dataclass
@@ -56,7 +60,9 @@ def targeted_pgd(model, image_np: np.ndarray, question: str, target_answer: str,
     clean = np.asarray(image_np, dtype=np.float32)
     rng = np.random.default_rng(cfg.seed)
 
-    if cfg.random_start:
+    if cfg.init_adv is not None:
+        adv = project_linf(np.asarray(cfg.init_adv, dtype=np.float32), clean, cfg.epsilon)
+    elif cfg.random_start:
         noise = rng.uniform(-cfg.epsilon, cfg.epsilon, size=clean.shape).astype(np.float32)
         adv = project_linf(clean + noise, clean, cfg.epsilon)
     else:

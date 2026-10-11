@@ -11,6 +11,7 @@ analysis all read the exact same pixels without recrafting the attack (item 11).
 """
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -63,6 +64,11 @@ def save_adv_image(lay: RunLayout, image_id: str, eps: float,
     return npy, png
 
 
+def adv_hash(adv: np.ndarray) -> str:
+    """sha256 of the float32 pixels a defense is scored on (input identity across runs)."""
+    return hashlib.sha256(np.ascontiguousarray(adv, dtype=np.float32).tobytes()).hexdigest()
+
+
 def load_adv_image(lay: RunLayout, image_id: str, eps: float) -> np.ndarray | None:
     npy, _ = adv_artifact_paths(lay, image_id, eps)
     if not npy.exists():
@@ -90,5 +96,5 @@ def count_jobs(lay: RunLayout) -> dict:
 
 
 __all__ = ["clean_job_path", "attack_job_path", "defense_job_path",
-           "adv_artifact_paths", "save_adv_image", "load_adv_image",
+           "adv_artifact_paths", "save_adv_image", "adv_hash", "load_adv_image",
            "read_attack_meta", "update_progress", "count_jobs", "is_done"]

@@ -139,3 +139,21 @@ def test_run_experiment_records_defense_in_the_attack_job(tmp_path):
     assert job["diag_grad_finite"] is True and job["diag_grad_abs_mean"] > 0
     assert job["diag_loss_raw_clean"] != job["diag_loss_defended_clean"]   # defense matters
     assert json.loads(lay.config.read_text())["meta"]["threat_model"] == "adaptive"
+
+
+def test_continuing_from_a_stored_image_equals_one_longer_run():
+    img = _image()
+    full = targeted_pgd(StubModel(), img, "q", "t", PGDConfig(16 / 255, 30, 1 / 255, True, 7))
+    first = targeted_pgd(StubModel(), img, "q", "t", PGDConfig(16 / 255, 12, 1 / 255, True, 7))
+    rest = targeted_pgd(StubModel(), img, "q", "t",
+                        PGDConfig(16 / 255, 18, 1 / 255, True, 7, init_adv=first.adv_image))
+    assert np.array_equal(full.adv_image, rest.adv_image)
+    assert len(rest.losses) == 18
+
+
+def test_continuation_start_is_projected_into_the_ball():
+    img = _image()
+    far = np.clip(img + 0.5, 0, 1).astype(np.float32)
+    r = targeted_pgd(StubModel(), img, "q", "t",
+                     PGDConfig(8 / 255, 1, 1 / 255, True, 7, init_adv=far))
+    assert r.linf <= 8 / 255 + 1e-6
