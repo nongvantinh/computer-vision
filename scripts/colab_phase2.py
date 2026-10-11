@@ -178,7 +178,7 @@ def stage_jpeg_ext():
     for budget in EXT_SCHEDULE[1:]:
         rid = EXT_RUN.format(budget)
         pull_npy(prev_id)
-        pull(rid)
+        pull_npy(rid)   # resume needs the stored images, or finished attack jobs are redone
         sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
            f"--adaptive-defense jpeg50 --limit {PILOT_IMAGES} --epsilon {PILOT_EPS} "
            f"--steps {budget - prev_cum} --init-from {LOCAL_RUNS}/{prev_id} "
