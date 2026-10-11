@@ -23,6 +23,15 @@ STAGE values
   pilot_dz      model answers for pilot adversarial images after the local, real
                 Dangerzone sanitize (dz/ or dz_ll/ uploaded into each pilot run dir).
   analysis      run_analysis.py on a run (RUN_ID).
+  jpeg_ext      staged continuation of the adaptive JPEG 50 pilot (same 10 images, 16/255):
+                cumulative 500, 1000, 2000 steps, each continuing from the previous
+                stage's stored image; stops by the rule in docs/phase2_screen_plan.md.
+                Run dirs pilot_jpeg50_s<budget>.
+  screen        adaptive attacks on the 50-image screen (configs/screen_50.json), in
+                priority order, SCREEN_STEPS steps each. Run dirs screen_<atk>_e<eps>.
+  screen_eval   defended-loss evaluation (gate G3) for the screen runs.
+  screen_dz     model answers on the locally sanitized Dangerzone images of the screen
+                runs (dz/ or dz_ll/ uploaded into each screen run dir).
 """
 import json
 import os
@@ -49,6 +58,20 @@ PILOT_RUNS = {   # run id -> (defense in the attack loop, defenses to score)
     "pilot_adaptive_dz_ll": ("dangerzone_ll", "D0,jpeg50"),
     "pilot_adaptive_dz": ("dangerzone", "D0,jpeg75"),
 }
+EXT_SCHEDULE = (200, 500, 1000, 2000)     # cumulative steps; 200 is the existing pilot
+EXT_RUN = "pilot_jpeg50_s{}"
+SCREEN_MANIFEST = "configs/screen_50.json"
+SCREEN_STEPS = int(globals().get("SCREEN_STEPS", 200))
+SCREEN_ONLY = [x for x in str(globals().get("SCREEN_ONLY", "")).split(",") if x]
+SCREEN_DEFENSES = "D0,jpeg90,jpeg75,jpeg50"
+SCREEN_RUNS = [   # priority order: 16/255 first, Dangerzone-lossless first
+    ("screen_dz_ll_e16", "dangerzone_ll", "0.0627450980"),
+    ("screen_jpeg50_e16", "jpeg50", "0.0627450980"),
+    ("screen_dz_e16", "dangerzone", "0.0627450980"),
+    ("screen_dz_ll_e08", "dangerzone_ll", "0.0313725490"),
+    ("screen_jpeg50_e08", "jpeg50", "0.0313725490"),
+    ("screen_dz_e08", "dangerzone", "0.0313725490"),
+]
 LIGHT = ("'--include=*/' '--include=*.json' '--include=*.jsonl' '--include=*.csv' "
          "'--include=*.yaml' '--include=*.png' '--exclude=*'")
 WITH_NPY = ("'--include=*/' '--include=*.json' '--include=*.jsonl' '--include=*.csv' "
@@ -145,6 +168,77 @@ def stage_pilot_dz():
         push(run_id)
 
 
+def pull_npy(run_id):   # Drive -> local, including the stored adversarial images
+    sh(f"mkdir -p {LOCAL_RUNS}/{run_id} && rsync -a {WITH_NPY} {DRIVE_RUNS}/{run_id}/ "
+       f"{LOCAL_RUNS}/{run_id}/")
+
+
+def stage_jpeg_ext():
+    prev_id, prev_cum = "pilot_adaptive_jpeg50", EXT_SCHEDULE[0]
+    for budget in EXT_SCHEDULE[1:]:
+        rid = EXT_RUN.format(budget)
+        pull_npy(prev_id)
+        pull(rid)
+        sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+           f"--adaptive-defense jpeg50 --limit {PILOT_IMAGES} --epsilon {PILOT_EPS} "
+           f"--steps {budget - prev_cum} --init-from {LOCAL_RUNS}/{prev_id} "
+           f"--defenses D0,jpeg50,jpeg75,jpeg90 --experiment-id {rid} "
+           f"--max-hours {SESSION_HOURS}", cwd=PROJECT)
+        sh(f"python scripts/eval_defended_loss.py --adaptive-run {LOCAL_RUNS}/{rid} "
+           f"--oblivious-run {DRIVE_RUNS}/{BASE_RUN} --defense jpeg50 "
+           f"--out {LOCAL_RUNS}/{rid}/defended_loss_jpeg50.json", cwd=PROJECT)
+        push(rid)
+        rc = sh(f"python scripts/stage_decision.py --run {LOCAL_RUNS}/{rid} --defense jpeg50 "
+                f"--eps {PILOT_EPS} --expect {PILOT_IMAGES} "
+                f"--previous-loss {LOCAL_RUNS}/{prev_id}/defended_loss_jpeg50.json "
+                f"--out {LOCAL_RUNS}/{rid}/stage_decision.json", cwd=PROJECT)
+        push(rid)
+        if rc != 0:
+            print(f"STAGE INCOMPLETE ({rc}): {rid}; run the stage again to resume", flush=True)
+            return
+        d = json.load(open(f"{LOCAL_RUNS}/{rid}/stage_decision.json"))
+        print("STAGE DECISION:", rid, d["action"], d["reason"], flush=True)
+        if d["action"] == "stop":
+            return
+        prev_id, prev_cum = rid, budget
+
+
+def stage_screen():
+    for rid, adaptive, eps in SCREEN_RUNS:
+        if SCREEN_ONLY and rid not in SCREEN_ONLY:
+            continue
+        pull(rid)
+        sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+           f"--adaptive-defense {adaptive} --manifest {SCREEN_MANIFEST} --epsilon {eps} "
+           f"--steps {SCREEN_STEPS} --defenses {SCREEN_DEFENSES} --experiment-id {rid} "
+           f"--max-hours {SESSION_HOURS}", cwd=PROJECT)
+        push(rid)
+
+
+def stage_screen_eval():
+    for rid, adaptive, _ in SCREEN_RUNS:
+        if SCREEN_ONLY and rid not in SCREEN_ONLY:
+            continue
+        pull(rid)
+        sh(f"python scripts/eval_defended_loss.py --adaptive-run {LOCAL_RUNS}/{rid} "
+           f"--oblivious-run {DRIVE_RUNS}/{BASE_RUN} --defense {adaptive} "
+           f"--manifest {SCREEN_MANIFEST} "
+           f"--out {LOCAL_RUNS}/{rid}/defended_loss_{adaptive}.json", cwd=PROJECT)
+        push(rid)
+
+
+def stage_screen_dz():
+    for rid, adaptive, _ in SCREEN_RUNS:
+        if not adaptive.startswith("dangerzone") or (SCREEN_ONLY and rid not in SCREEN_ONLY):
+            continue
+        variant = "lossless" if adaptive.endswith("_ll") else "jpeg"
+        d = "dz_ll" if variant == "lossless" else "dz"
+        pull(rid)
+        sh(f"python scripts/dangerzone_finalize.py --run {LOCAL_RUNS}/{rid} "
+           f"--variant {variant} --dz-dir {DRIVE_RUNS}/{rid}/{d}", cwd=PROJECT)
+        push(rid)
+
+
 def stage_analysis():
     pull(RUN_ID)
     sh(f"python scripts/run_analysis.py --run {LOCAL_RUNS}/{RUN_ID}", cwd=PROJECT)
@@ -153,7 +247,8 @@ def stage_analysis():
 
 STAGES = {"controls": stage_controls, "dz_answers": stage_dz_answers, "pilot": stage_pilot,
           "pilot_eval": stage_pilot_eval, "pilot_dz": stage_pilot_dz,
-          "analysis": stage_analysis}
+          "analysis": stage_analysis, "jpeg_ext": stage_jpeg_ext, "screen": stage_screen,
+          "screen_eval": stage_screen_eval, "screen_dz": stage_screen_dz}
 
 todo = [s.strip() for s in STAGE.split(",") if s.strip()]
 bad = [s for s in todo if s not in STAGES]

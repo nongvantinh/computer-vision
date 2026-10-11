@@ -126,3 +126,4 @@ cell is reportable.
 |---|---|---|
 | 2026-10-07 | Analysis plan v1 to v2 | Adapter confound found before any adaptive run |
 | 2026-10-07 | Pilot includes legacy `dangerzone` (30 attacks, not about 20) | Directly tests whether the baseline 0% was an artifact of the hidden JPEG |
+| 2026-10-11 | Protocol revision 1: G5a and G5b, extended JPEG 50 schedule, stratified 50-image screen | See `docs/phase2_screen_plan.md` section 7 | G5 failure and the pilot results |

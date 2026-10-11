@@ -29,9 +29,12 @@ def main() -> int:
     ap.add_argument("--oblivious-run", required=True)
     ap.add_argument("--defense", required=True)
     ap.add_argument("--config", default="configs/experiment.yaml")
+    ap.add_argument("--manifest", default=None, help="dataset manifest override")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     cfg = load_config(args.config)
+    if args.manifest:
+        cfg["dataset"]["manifest"] = args.manifest
     seed_everything(cfg["seed"])
     ada, obl = RunLayout(Path(args.adaptive_run)), RunLayout(Path(args.oblivious_run))
     model, ds = build_model(cfg), build_dataset(cfg)

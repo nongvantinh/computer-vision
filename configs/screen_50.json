@@ -1,0 +1,515 @@
+{
+ "seed": 1234,
+ "n_classes": 20,
+ "per_class": 10,
+ "prompt": "What is the main object in this image? Answer with a single lowercase word.",
+ "screen": {
+  "parent_manifest": "dataset_manifest.json",
+  "seed": 1234,
+  "n": 50,
+  "classes": 20,
+  "rule": "2 per class plus 1 from 10 seeded classes"
+ },
+ "samples": [
+  {
+   "image_id": "n01440764/n01440764_11570.JPEG",
+   "file": "n01440764/n01440764_11570.JPEG",
+   "class_id": "0",
+   "wnid": "n01440764",
+   "class_name": "tench",
+   "target_class_id": "155",
+   "target_wnid": "n02086240",
+   "target_class_name": "Shih-Tzu"
+  },
+  {
+   "image_id": "n01440764/n01440764_4962.JPEG",
+   "file": "n01440764/n01440764_4962.JPEG",
+   "class_id": "0",
+   "wnid": "n01440764",
+   "class_name": "tench",
+   "target_class_id": "155",
+   "target_wnid": "n02086240",
+   "target_class_name": "Shih-Tzu"
+  },
+  {
+   "image_id": "n02086240/n02086240_1611.JPEG",
+   "file": "n02086240/n02086240_1611.JPEG",
+   "class_id": "155",
+   "wnid": "n02086240",
+   "class_name": "Shih-Tzu",
+   "target_class_id": "159",
+   "target_wnid": "n02087394",
+   "target_class_name": "Rhodesian_ridgeback"
+  },
+  {
+   "image_id": "n02086240/n02086240_5750.JPEG",
+   "file": "n02086240/n02086240_5750.JPEG",
+   "class_id": "155",
+   "wnid": "n02086240",
+   "class_name": "Shih-Tzu",
+   "target_class_id": "159",
+   "target_wnid": "n02087394",
+   "target_class_name": "Rhodesian_ridgeback"
+  },
+  {
+   "image_id": "n02086240/n02086240_6702.JPEG",
+   "file": "n02086240/n02086240_6702.JPEG",
+   "class_id": "155",
+   "wnid": "n02086240",
+   "class_name": "Shih-Tzu",
+   "target_class_id": "159",
+   "target_wnid": "n02087394",
+   "target_class_name": "Rhodesian_ridgeback"
+  },
+  {
+   "image_id": "n02087394/n02087394_5890.JPEG",
+   "file": "n02087394/n02087394_5890.JPEG",
+   "class_id": "159",
+   "wnid": "n02087394",
+   "class_name": "Rhodesian_ridgeback",
+   "target_class_id": "162",
+   "target_wnid": "n02088364",
+   "target_class_name": "beagle"
+  },
+  {
+   "image_id": "n02087394/n02087394_7771.JPEG",
+   "file": "n02087394/n02087394_7771.JPEG",
+   "class_id": "159",
+   "wnid": "n02087394",
+   "class_name": "Rhodesian_ridgeback",
+   "target_class_id": "162",
+   "target_wnid": "n02088364",
+   "target_class_name": "beagle"
+  },
+  {
+   "image_id": "n02087394/n02087394_9310.JPEG",
+   "file": "n02087394/n02087394_9310.JPEG",
+   "class_id": "159",
+   "wnid": "n02087394",
+   "class_name": "Rhodesian_ridgeback",
+   "target_class_id": "162",
+   "target_wnid": "n02088364",
+   "target_class_name": "beagle"
+  },
+  {
+   "image_id": "n02088364/ILSVRC2012_val_00010420.JPEG",
+   "file": "n02088364/ILSVRC2012_val_00010420.JPEG",
+   "class_id": "162",
+   "wnid": "n02088364",
+   "class_name": "beagle",
+   "target_class_id": "167",
+   "target_wnid": "n02089973",
+   "target_class_name": "English_foxhound"
+  },
+  {
+   "image_id": "n02088364/n02088364_5381.JPEG",
+   "file": "n02088364/n02088364_5381.JPEG",
+   "class_id": "162",
+   "wnid": "n02088364",
+   "class_name": "beagle",
+   "target_class_id": "167",
+   "target_wnid": "n02089973",
+   "target_class_name": "English_foxhound"
+  },
+  {
+   "image_id": "n02089973/n02089973_1642.JPEG",
+   "file": "n02089973/n02089973_1642.JPEG",
+   "class_id": "167",
+   "wnid": "n02089973",
+   "class_name": "English_foxhound",
+   "target_class_id": "182",
+   "target_wnid": "n02093754",
+   "target_class_name": "Border_terrier"
+  },
+  {
+   "image_id": "n02089973/n02089973_5351.JPEG",
+   "file": "n02089973/n02089973_5351.JPEG",
+   "class_id": "167",
+   "wnid": "n02089973",
+   "class_name": "English_foxhound",
+   "target_class_id": "182",
+   "target_wnid": "n02093754",
+   "target_class_name": "Border_terrier"
+  },
+  {
+   "image_id": "n02089973/n02089973_6271.JPEG",
+   "file": "n02089973/n02089973_6271.JPEG",
+   "class_id": "167",
+   "wnid": "n02089973",
+   "class_name": "English_foxhound",
+   "target_class_id": "182",
+   "target_wnid": "n02093754",
+   "target_class_name": "Border_terrier"
+  },
+  {
+   "image_id": "n02093754/n02093754_1792.JPEG",
+   "file": "n02093754/n02093754_1792.JPEG",
+   "class_id": "182",
+   "wnid": "n02093754",
+   "class_name": "Border_terrier",
+   "target_class_id": "193",
+   "target_wnid": "n02096294",
+   "target_class_name": "Australian_terrier"
+  },
+  {
+   "image_id": "n02093754/n02093754_2841.JPEG",
+   "file": "n02093754/n02093754_2841.JPEG",
+   "class_id": "182",
+   "wnid": "n02093754",
+   "class_name": "Border_terrier",
+   "target_class_id": "193",
+   "target_wnid": "n02096294",
+   "target_class_name": "Australian_terrier"
+  },
+  {
+   "image_id": "n02093754/n02093754_4522.JPEG",
+   "file": "n02093754/n02093754_4522.JPEG",
+   "class_id": "182",
+   "wnid": "n02093754",
+   "class_name": "Border_terrier",
+   "target_class_id": "193",
+   "target_wnid": "n02096294",
+   "target_class_name": "Australian_terrier"
+  },
+  {
+   "image_id": "n02096294/n02096294_1160.JPEG",
+   "file": "n02096294/n02096294_1160.JPEG",
+   "class_id": "193",
+   "wnid": "n02096294",
+   "class_name": "Australian_terrier",
+   "target_class_id": "207",
+   "target_wnid": "n02099601",
+   "target_class_name": "golden_retriever"
+  },
+  {
+   "image_id": "n02096294/n02096294_4540.JPEG",
+   "file": "n02096294/n02096294_4540.JPEG",
+   "class_id": "193",
+   "wnid": "n02096294",
+   "class_name": "Australian_terrier",
+   "target_class_id": "207",
+   "target_wnid": "n02099601",
+   "target_class_name": "golden_retriever"
+  },
+  {
+   "image_id": "n02096294/n02096294_5630.JPEG",
+   "file": "n02096294/n02096294_5630.JPEG",
+   "class_id": "193",
+   "wnid": "n02096294",
+   "class_name": "Australian_terrier",
+   "target_class_id": "207",
+   "target_wnid": "n02099601",
+   "target_class_name": "golden_retriever"
+  },
+  {
+   "image_id": "n02099601/n02099601_11422.JPEG",
+   "file": "n02099601/n02099601_11422.JPEG",
+   "class_id": "207",
+   "wnid": "n02099601",
+   "class_name": "golden_retriever",
+   "target_class_id": "217",
+   "target_wnid": "n02102040",
+   "target_class_name": "English_springer"
+  },
+  {
+   "image_id": "n02099601/n02099601_972.JPEG",
+   "file": "n02099601/n02099601_972.JPEG",
+   "class_id": "207",
+   "wnid": "n02099601",
+   "class_name": "golden_retriever",
+   "target_class_id": "217",
+   "target_wnid": "n02102040",
+   "target_class_name": "English_springer"
+  },
+  {
+   "image_id": "n02102040/n02102040_4070.JPEG",
+   "file": "n02102040/n02102040_4070.JPEG",
+   "class_id": "217",
+   "wnid": "n02102040",
+   "class_name": "English_springer",
+   "target_class_id": "229",
+   "target_wnid": "n02105641",
+   "target_class_name": "Old_English_sheepdog"
+  },
+  {
+   "image_id": "n02102040/n02102040_4980.JPEG",
+   "file": "n02102040/n02102040_4980.JPEG",
+   "class_id": "217",
+   "wnid": "n02102040",
+   "class_name": "English_springer",
+   "target_class_id": "229",
+   "target_wnid": "n02105641",
+   "target_class_name": "Old_English_sheepdog"
+  },
+  {
+   "image_id": "n02105641/n02105641_12692.JPEG",
+   "file": "n02105641/n02105641_12692.JPEG",
+   "class_id": "229",
+   "wnid": "n02105641",
+   "class_name": "Old_English_sheepdog",
+   "target_class_id": "258",
+   "target_wnid": "n02111889",
+   "target_class_name": "Samoyed"
+  },
+  {
+   "image_id": "n02105641/n02105641_14061.JPEG",
+   "file": "n02105641/n02105641_14061.JPEG",
+   "class_id": "229",
+   "wnid": "n02105641",
+   "class_name": "Old_English_sheepdog",
+   "target_class_id": "258",
+   "target_wnid": "n02111889",
+   "target_class_name": "Samoyed"
+  },
+  {
+   "image_id": "n02111889/n02111889_13381.JPEG",
+   "file": "n02111889/n02111889_13381.JPEG",
+   "class_id": "258",
+   "wnid": "n02111889",
+   "class_name": "Samoyed",
+   "target_class_id": "273",
+   "target_wnid": "n02115641",
+   "target_class_name": "dingo"
+  },
+  {
+   "image_id": "n02111889/n02111889_17400.JPEG",
+   "file": "n02111889/n02111889_17400.JPEG",
+   "class_id": "258",
+   "wnid": "n02111889",
+   "class_name": "Samoyed",
+   "target_class_id": "273",
+   "target_wnid": "n02115641",
+   "target_class_name": "dingo"
+  },
+  {
+   "image_id": "n02111889/n02111889_5602.JPEG",
+   "file": "n02111889/n02111889_5602.JPEG",
+   "class_id": "258",
+   "wnid": "n02111889",
+   "class_name": "Samoyed",
+   "target_class_id": "273",
+   "target_wnid": "n02115641",
+   "target_class_name": "dingo"
+  },
+  {
+   "image_id": "n02115641/n02115641_11031.JPEG",
+   "file": "n02115641/n02115641_11031.JPEG",
+   "class_id": "273",
+   "wnid": "n02115641",
+   "class_name": "dingo",
+   "target_class_id": "482",
+   "target_wnid": "n02979186",
+   "target_class_name": "cassette_player"
+  },
+  {
+   "image_id": "n02115641/n02115641_44040.JPEG",
+   "file": "n02115641/n02115641_44040.JPEG",
+   "class_id": "273",
+   "wnid": "n02115641",
+   "class_name": "dingo",
+   "target_class_id": "482",
+   "target_wnid": "n02979186",
+   "target_class_name": "cassette_player"
+  },
+  {
+   "image_id": "n02115641/n02115641_9681.JPEG",
+   "file": "n02115641/n02115641_9681.JPEG",
+   "class_id": "273",
+   "wnid": "n02115641",
+   "class_name": "dingo",
+   "target_class_id": "482",
+   "target_wnid": "n02979186",
+   "target_class_name": "cassette_player"
+  },
+  {
+   "image_id": "n02979186/n02979186_11052.JPEG",
+   "file": "n02979186/n02979186_11052.JPEG",
+   "class_id": "482",
+   "wnid": "n02979186",
+   "class_name": "cassette_player",
+   "target_class_id": "491",
+   "target_wnid": "n03000684",
+   "target_class_name": "chain_saw"
+  },
+  {
+   "image_id": "n02979186/n02979186_5772.JPEG",
+   "file": "n02979186/n02979186_5772.JPEG",
+   "class_id": "482",
+   "wnid": "n02979186",
+   "class_name": "cassette_player",
+   "target_class_id": "491",
+   "target_wnid": "n03000684",
+   "target_class_name": "chain_saw"
+  },
+  {
+   "image_id": "n02979186/n02979186_9112.JPEG",
+   "file": "n02979186/n02979186_9112.JPEG",
+   "class_id": "482",
+   "wnid": "n02979186",
+   "class_name": "cassette_player",
+   "target_class_id": "491",
+   "target_wnid": "n03000684",
+   "target_class_name": "chain_saw"
+  },
+  {
+   "image_id": "n03000684/n03000684_2812.JPEG",
+   "file": "n03000684/n03000684_2812.JPEG",
+   "class_id": "491",
+   "wnid": "n03000684",
+   "class_name": "chain_saw",
+   "target_class_id": "497",
+   "target_wnid": "n03028079",
+   "target_class_name": "church"
+  },
+  {
+   "image_id": "n03000684/n03000684_7222.JPEG",
+   "file": "n03000684/n03000684_7222.JPEG",
+   "class_id": "491",
+   "wnid": "n03000684",
+   "class_name": "chain_saw",
+   "target_class_id": "497",
+   "target_wnid": "n03028079",
+   "target_class_name": "church"
+  },
+  {
+   "image_id": "n03028079/n03028079_16660.JPEG",
+   "file": "n03028079/n03028079_16660.JPEG",
+   "class_id": "497",
+   "wnid": "n03028079",
+   "class_name": "church",
+   "target_class_id": "566",
+   "target_wnid": "n03394916",
+   "target_class_name": "French_horn"
+  },
+  {
+   "image_id": "n03028079/n03028079_47271.JPEG",
+   "file": "n03028079/n03028079_47271.JPEG",
+   "class_id": "497",
+   "wnid": "n03028079",
+   "class_name": "church",
+   "target_class_id": "566",
+   "target_wnid": "n03394916",
+   "target_class_name": "French_horn"
+  },
+  {
+   "image_id": "n03028079/n03028079_77811.JPEG",
+   "file": "n03028079/n03028079_77811.JPEG",
+   "class_id": "497",
+   "wnid": "n03028079",
+   "class_name": "church",
+   "target_class_id": "566",
+   "target_wnid": "n03394916",
+   "target_class_name": "French_horn"
+  },
+  {
+   "image_id": "n03394916/n03394916_33771.JPEG",
+   "file": "n03394916/n03394916_33771.JPEG",
+   "class_id": "566",
+   "wnid": "n03394916",
+   "class_name": "French_horn",
+   "target_class_id": "569",
+   "target_wnid": "n03417042",
+   "target_class_name": "garbage_truck"
+  },
+  {
+   "image_id": "n03394916/n03394916_57410.JPEG",
+   "file": "n03394916/n03394916_57410.JPEG",
+   "class_id": "566",
+   "wnid": "n03394916",
+   "class_name": "French_horn",
+   "target_class_id": "569",
+   "target_wnid": "n03417042",
+   "target_class_name": "garbage_truck"
+  },
+  {
+   "image_id": "n03417042/n03417042_4520.JPEG",
+   "file": "n03417042/n03417042_4520.JPEG",
+   "class_id": "569",
+   "wnid": "n03417042",
+   "class_name": "garbage_truck",
+   "target_class_id": "571",
+   "target_wnid": "n03425413",
+   "target_class_name": "gas_pump"
+  },
+  {
+   "image_id": "n03417042/n03417042_7670.JPEG",
+   "file": "n03417042/n03417042_7670.JPEG",
+   "class_id": "569",
+   "wnid": "n03417042",
+   "class_name": "garbage_truck",
+   "target_class_id": "571",
+   "target_wnid": "n03425413",
+   "target_class_name": "gas_pump"
+  },
+  {
+   "image_id": "n03425413/n03425413_12951.JPEG",
+   "file": "n03425413/n03425413_12951.JPEG",
+   "class_id": "571",
+   "wnid": "n03425413",
+   "class_name": "gas_pump",
+   "target_class_id": "574",
+   "target_wnid": "n03445777",
+   "target_class_name": "golf_ball"
+  },
+  {
+   "image_id": "n03425413/n03425413_8641.JPEG",
+   "file": "n03425413/n03425413_8641.JPEG",
+   "class_id": "571",
+   "wnid": "n03425413",
+   "class_name": "gas_pump",
+   "target_class_id": "574",
+   "target_wnid": "n03445777",
+   "target_class_name": "golf_ball"
+  },
+  {
+   "image_id": "n03445777/n03445777_15110.JPEG",
+   "file": "n03445777/n03445777_15110.JPEG",
+   "class_id": "574",
+   "wnid": "n03445777",
+   "class_name": "golf_ball",
+   "target_class_id": "701",
+   "target_wnid": "n03888257",
+   "target_class_name": "parachute"
+  },
+  {
+   "image_id": "n03445777/n03445777_3090.JPEG",
+   "file": "n03445777/n03445777_3090.JPEG",
+   "class_id": "574",
+   "wnid": "n03445777",
+   "class_name": "golf_ball",
+   "target_class_id": "701",
+   "target_wnid": "n03888257",
+   "target_class_name": "parachute"
+  },
+  {
+   "image_id": "n03445777/n03445777_7650.JPEG",
+   "file": "n03445777/n03445777_7650.JPEG",
+   "class_id": "574",
+   "wnid": "n03445777",
+   "class_name": "golf_ball",
+   "target_class_id": "701",
+   "target_wnid": "n03888257",
+   "target_class_name": "parachute"
+  },
+  {
+   "image_id": "n03888257/ILSVRC2012_val_00001440.JPEG",
+   "file": "n03888257/ILSVRC2012_val_00001440.JPEG",
+   "class_id": "701",
+   "wnid": "n03888257",
+   "class_name": "parachute",
+   "target_class_id": "0",
+   "target_wnid": "n01440764",
+   "target_class_name": "tench"
+  },
+  {
+   "image_id": "n03888257/n03888257_9812.JPEG",
+   "file": "n03888257/n03888257_9812.JPEG",
+   "class_id": "701",
+   "wnid": "n03888257",
+   "class_name": "parachute",
+   "target_class_id": "0",
+   "target_wnid": "n01440764",
+   "target_class_name": "tench"
+  }
+ ]
+}
