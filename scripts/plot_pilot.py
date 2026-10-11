@@ -41,12 +41,13 @@ def rate(rs: list[dict], defense: str, ids: set) -> tuple[int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="results/runs")
-    ap.add_argument("--baseline", default="results/runs/full_200")
+    ap.add_argument("--baseline", action="append", default=None,
+                    help="non-adaptive run(s); for each defense the first run that has it is used")
     ap.add_argument("--out", default="results/pilot")
     a = ap.parse_args()
     runs, out = Path(a.runs), Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    base = rows(Path(a.baseline))
+    bases = [rows(Path(b)) for b in (a.baseline or ["results/runs/full_200", "results/runs/controls_v1"])]
 
     fig, axs = plt.subplots(1, 3, figsize=(11, 3.6), sharey=True)
     for ax, (run, defense, dl, title) in zip(axs, RUNS):
@@ -64,13 +65,15 @@ def main() -> int:
 
     fig, axs = plt.subplots(1, 3, figsize=(11, 3.6), sharey=True)
     summary = {}
+    base = []
     for ax, (run, defense, dl, title) in zip(axs, RUNS):
         ada = rows(runs / run)
         ids = {r["image_id"] for r in ada}
         names = sorted({r["defense"] for r in ada}, key=lambda n: (n != "D0", n))
         for j, n in enumerate(names):
             for off, label, rs, col in ((-0.2, "non-adaptive", base, "#4c78a8"), (0.2, "adaptive", ada, "#e45756")):
-                k, m = rate(rs, n, ids)
+                k, m = (rate(rs, n, ids) if rs is not base else
+                         next((x for x in (rate(b, n, ids) for b in bases) if x[1]), (0, 0)))
                 p, lo, hi = clopper_pearson(k, m, 0.05)
                 ax.bar(j + off, p, 0.38, color=col, label=label if j == 0 else None)
                 ax.errorbar(j + off, p, yerr=[[p - lo], [hi - p]], color="k", capsize=2, lw=1)
