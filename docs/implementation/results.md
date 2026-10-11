@@ -4,6 +4,22 @@ This file separates **hypotheses** (what we expect, no numbers invented) from
 **measured results**. Both the preliminary pilot and the final full_200 run below are
 real, measured data.
 
+## Erratum (2026-10-11) to the Phase 1 results below
+
+The measured numbers in this file are kept as originally written. Two corrections apply.
+
+1. **The `dangerzone` condition contains a JPEG 75.** The adapter writes the image into
+   the PDF with Pillow, which embeds it as JPEG 75 (bit-identical to the JPEG 75 defense).
+   JPEG 75 alone neutralizes 184 of the 185 attacks that worked undefended, so the
+   Dangerzone result in this file cannot be credited to Dangerzone. The lossless adapter
+   is `dangerzone_ll`. See `docs/phase2_preregistration.md`.
+2. **39 of 600 baseline rows were scored on different pixels than the stored arrays.**
+   They belong to 13 images (the 10 tench images and 3 of `n02086240`). Re-scoring the
+   stored arrays (`controls_v1`) changes the D0 counts from 22, 52, 111 to 21, 53, 112
+   successes at 4, 8 and 16/255 (185 to 186 in total). The JPEG 90, 75 and 50 outcomes are
+   identical (0 of 600 differ). The conclusions do not change. Details and the checks that
+   found this are in `docs/phase2_screen_plan.md` section 2.
+
 ## Preliminary pilot — N=12, eps=8/255 (measured 2026-09-30)
 
 Real end-to-end result. Raw run: `results/runs/pilot_n12_eps8/` (also on Drive).
