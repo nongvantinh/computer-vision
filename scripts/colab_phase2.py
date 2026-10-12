@@ -207,7 +207,7 @@ def stage_screen():
     for rid, adaptive, eps in SCREEN_RUNS:
         if SCREEN_ONLY and rid not in SCREEN_ONLY:
             continue
-        pull(rid)
+        pull_npy(rid)
         sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
            f"--adaptive-defense {adaptive} --manifest {SCREEN_MANIFEST} --epsilon {eps} "
            f"--steps {SCREEN_STEPS} --defenses {SCREEN_DEFENSES} --experiment-id {rid} "
