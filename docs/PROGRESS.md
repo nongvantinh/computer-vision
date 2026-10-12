@@ -19,7 +19,16 @@ Live status file. Updated at each step; the commit history has the details.
 - Extended adaptive JPEG 50 pilot (stage `jpeg_ext`, Colab, started 2026-10-11 14:53 UTC).
   - 500 cumulative steps done: 4/10 succeed through real JPEG 50 (0/10 at 200 steps), median
     defended loss 2.55 to 1.87 (26.6% lower), decision `continue`. JPEG 75 and 90 and D0 stay 0/10.
-  - 1000 cumulative steps running, about 14 minutes per image.
+  - 1000 cumulative steps done (2026-10-12): 6/10 succeed through real JPEG 50, median defended
+    loss 1.92 to 1.42 (26.1% lower), decision `continue` (S1 needs 8/10, S2 needs under 10%
+    improvement). 2000 cumulative steps now running, about 22 minutes per image.
+  - Incident: the first resume in a new session re-crafted images 1 and 2 of the 500-step
+    stage, because the stage script pulled job files without the stored images (fixed in
+    112b0ba). The Drive copy of `pilot_jpeg50_s500` now holds re-crafted pixels for those two
+    images (loss 2.43 to 2.37, 1.30 to 1.38; GPU runs are not bit-reproducible). The original
+    500-step result (4/10, median 1.87) is in the local `results/runs/pilot_jpeg50_s500` and in
+    the earlier commit f9bed45. The 1000-step stage continues from the Drive copy, so it is a
+    valid 500+500 continuation of those images, but its 500-step reference median is 1.92.
 
 ## Pending
 
