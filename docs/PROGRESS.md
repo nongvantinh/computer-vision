@@ -21,7 +21,14 @@ Live status file. Updated at each step; the commit history has the details.
     defended loss 2.55 to 1.87 (26.6% lower), decision `continue`. JPEG 75 and 90 and D0 stay 0/10.
   - 1000 cumulative steps done (2026-10-12): 6/10 succeed through real JPEG 50, median defended
     loss 1.92 to 1.42 (26.1% lower), decision `continue` (S1 needs 8/10, S2 needs under 10%
-    improvement). 2000 cumulative steps now running, about 22 minutes per image.
+    improvement).
+  - 2000 cumulative steps done (2026-10-12, second attempt; the first was lost with its
+    Colab session before reaching Drive): 7/10 succeed through real JPEG 50, median defended
+    loss 1.42 to 1.19 (16.1% lower). Stop reason S3, the maximum budget. S1 (8/10) was not
+    reached and S2 (under 10% improvement) did not fire, so the attack had not converged.
+    Success by budget through JPEG 50: 0/10 (200), 4/10 (500), 6/10 (1000), 7/10 (2000).
+    JPEG 75 and JPEG 90 reach 1/10 each at 2000 steps (0/10 before). D0 stays 0/10.
+    Cost: about 22 to 24 minutes per image for the last 1000 steps.
   - Incident: the first resume in a new session re-crafted images 1 and 2 of the 500-step
     stage, because the stage script pulled job files without the stored images (fixed in
     112b0ba). The Drive copy of `pilot_jpeg50_s500` now holds re-crafted pixels for those two
@@ -32,7 +39,7 @@ Live status file. Updated at each step; the commit history has the details.
 
 ## Pending
 
-- Choose the screen step budget from the JPEG 50 stopping point (cap 500).
+- Screen step budget: the JPEG 50 stop point is 2000, so the 500 cap binds (plan section 4). The screen reports at 500 steps, where the pilot JPEG 50 attack had not converged. A 500-step attack takes about 14 minutes per image, so one 50-image run is about 11.5 GPU hours.
 - Screen runs in priority order (stage `screen`), local Dangerzone sanitize, stage `screen_dz`.
 - Screen analysis, figures, report; Phase 1 report erratum for the 39 rows.
 

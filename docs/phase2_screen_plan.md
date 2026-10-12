@@ -108,6 +108,17 @@ the convergence evidence and calls it an unresolved optimization result. It is n
 described as robustness of JPEG 50, and epsilon and target are not changed to produce a
 success.
 
+### 3.1 Result of the extended attack (recorded 2026-10-12)
+
+Stopped by S3 at 2000 cumulative steps with 7/10 successes through real JPEG 50 and a median
+defended loss of 1.19 (16.1% below the 1000-step value). Success by budget: 0/10 (200), 4/10
+(500), 6/10 (1000), 7/10 (2000). Neither S1 nor S2 fired, so the attack was still improving at
+the maximum budget. JPEG 50 is therefore not robust to this attacker at 16/255, and the rate
+still rises with steps. Two caveats: the 500-step images 1 and 2 on Drive were re-crafted by a
+resume bug (see PROGRESS.md), and all ten images are tench. The screen budget rule gives 500
+steps (cap), where JPEG 50 reached 4/10 in the pilot, so screen JPEG 50 rates are lower bounds
+on what a longer attack achieves.
+
 ## 4. The 50-image screen
 
 **Purpose.** A decision gate for the confirmatory N = 200 run: find implementation
@@ -196,3 +207,4 @@ screen adds run directories and does not overwrite any.
 | 2026-10-11 | Screen images stratified over classes, not first 50 | First 50 are 5 classes | manifest order, pilot images all tench |
 | 2026-10-11 | 4/255 left out of the screen | Low non-adaptive ASR, compute | non-adaptive ASR per budget |
 | 2026-10-11 | Screen step budget tied to the JPEG 50 stopping point, capped at 500 | Equal optimizer effort, compute | none beyond the above |
+| 2026-10-12 | Applied the cap: screen budget is 500 steps | JPEG 50 stopped at 2000 under S3 | the extended-attack result above |
