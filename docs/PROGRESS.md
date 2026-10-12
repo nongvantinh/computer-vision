@@ -37,6 +37,11 @@ Live status file. Updated at each step; the commit history has the details.
     the earlier commit f9bed45. The 1000-step stage continues from the Drive copy, so it is a
     valid 500+500 continuation of those images, but its 500-step reference median is 1.92.
 
+- Screen run 1 of 6, `screen_dz_ll_e16` (lossless Dangerzone adapter, 16/255, 500 steps, 50 images),
+  started 2026-10-12 09:34 UTC on Colab: about 755 s per image, so about 10.5 hours. First
+  image loss 6.88 to 0.37 on the surrogate. Runs after it: `screen_jpeg50_e16`, `screen_dz_e16`,
+  then the three 8/255 runs, each one Colab session with `SCREEN_ONLY` set.
+
 ## Pending
 
 - Screen step budget: the JPEG 50 stop point is 2000, so the 500 cap binds (plan section 4). The screen reports at 500 steps, where the pilot JPEG 50 attack had not converged. A 500-step attack takes about 14 minutes per image, so one 50-image run is about 11.5 GPU hours.
