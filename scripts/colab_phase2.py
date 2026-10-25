@@ -36,6 +36,8 @@ STAGE values
 import json
 import os
 import subprocess
+import threading
+import time
 
 STAGE = globals().get("STAGE", "controls")
 REPO_URL = globals().get("REPO_URL", "https://github.com/nongvantinh/computer-vision.git")
@@ -89,6 +91,38 @@ def sh(cmd, cwd=None, check=False):
     if check and rc:
         raise SystemExit(f"failed ({rc}): {cmd}")
     return rc
+
+
+SYNC_SECONDS = int(globals().get("SYNC_SECONDS", 120))
+
+
+def _sync_loop():
+    """Copy every local run directory to Drive on a timer and log what Drive now holds.
+
+    Replaces the notebook's shell autosync, which never ran (Colab's /bin/sh is dash and
+    rejects `exec -a`), so a reclaimed VM lost a whole 10 hour screen run."""
+    while True:
+        time.sleep(SYNC_SECONDS)
+        try:
+            if not os.path.isdir(LOCAL_RUNS):
+                continue
+            for rid in sorted(os.listdir(LOCAL_RUNS)):
+                if not os.path.isdir(f"{LOCAL_RUNS}/{rid}/jobs"):
+                    continue
+                os.makedirs(f"{DRIVE_RUNS}/{rid}", exist_ok=True)
+                subprocess.run(f"rsync -a {WITH_NPY} {LOCAL_RUNS}/{rid}/ {DRIVE_RUNS}/{rid}/",
+                               shell=True, check=False, capture_output=True)
+                n_loc = len([f for f in os.listdir(f"{LOCAL_RUNS}/{rid}/adv") if f.endswith(".npy")]) \
+                    if os.path.isdir(f"{LOCAL_RUNS}/{rid}/adv") else 0
+                n_drv = len([f for f in os.listdir(f"{DRIVE_RUNS}/{rid}/adv") if f.endswith(".npy")]) \
+                    if os.path.isdir(f"{DRIVE_RUNS}/{rid}/adv") else 0
+                print(f"SYNC {rid}: adv local {n_loc}, on Drive {n_drv}", flush=True)
+        except Exception as e:   # never let the sync thread kill the stage
+            print("SYNC error:", e, flush=True)
+
+
+def start_sync():
+    threading.Thread(target=_sync_loop, daemon=True).start()
 
 
 def setup():
@@ -255,6 +289,7 @@ bad = [s for s in todo if s not in STAGES]
 if bad:
     raise SystemExit(f"unknown STAGE {bad}; choose from {sorted(STAGES)}")
 setup()
+start_sync()
 for name in todo:
     print(f"=== STAGE START: {name}", flush=True)
     STAGES[name]()
