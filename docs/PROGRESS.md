@@ -41,6 +41,11 @@ Live status file. Updated at each step; the commit history has the details.
   started 2026-10-12 09:34 UTC on Colab: about 755 s per image, so about 10.5 hours. First
   image loss 6.88 to 0.37 on the surrogate. Runs after it: `screen_jpeg50_e16`, `screen_dz_e16`,
   then the three 8/255 runs, each one Colab session with `SCREEN_ONLY` set.
+  - Lost (2026-10-12): that run reached 20 of 50 images (last seen 13:51 UTC) and was never copied
+    to Drive. Cause: the notebook's shell autosync never ran, because Colab's `/bin/sh` is dash
+    and rejects `exec -a`; with no browser tab open, Colab then released the runtime. No screen
+    result exists. Fixed in c644c6c: the stage script copies every run directory to Drive every
+    2 minutes and logs `SYNC <run>: adv local N, on Drive M`. Run 1 restarts from image 1.
 
 ## Pending
 
