@@ -46,6 +46,10 @@ Live status file. Updated at each step; the commit history has the details.
     and rejects `exec -a`; with no browser tab open, Colab then released the runtime. No screen
     result exists. Fixed in c644c6c: the stage script copies every run directory to Drive every
     2 minutes and logs `SYNC <run>: adv local N, on Drive M`. Run 1 restarts from image 1.
+  - Run 1 finished (2026-10-26): 50/50 attacks, 200/200 defense rows, 0 failures. Through the
+    standard defenses D0 7/50, JPEG 90/75/50 0/50. Real Dangerzone (lossless adapter) sanitize
+    done locally: 50 new, 0 failed, uploaded to Drive as `dz_ll/`. Next Colab session:
+    `screen_eval,screen_dz` for run 1, then run 2 (`screen_jpeg50_e16`).
 
 ## Pending
 
