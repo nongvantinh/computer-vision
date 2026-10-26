@@ -50,6 +50,18 @@ Live status file. Updated at each step; the commit history has the details.
     standard defenses D0 7/50, JPEG 90/75/50 0/50. Real Dangerzone (lossless adapter) sanitize
     done locally: 50 new, 0 failed, uploaded to Drive as `dz_ll/`. Next Colab session:
     `screen_eval,screen_dz` for run 1, then run 2 (`screen_jpeg50_e16`).
+  - Run 1 scored on real Dangerzone (2026-10-27, `screen_dz`, exploratory): adaptive through the
+    lossless adapter succeeds on 40/50 images (80%, 95% CI 66.3 to 90.0%) against 2/50 for the
+    non-adaptive attack (4%, CI 0.5 to 13.7%); paired difference 76 points (CI 60.7 to 84.9%),
+    38 discordant pairs one way and 0 the other, exact McNemar p 7e-12 (single-test family).
+    The same images give D0 7/50 and JPEG 90/75/50 0/50, so this attack works on Dangerzone and
+    does not transfer to JPEG. Replicates the 8/10 pilot at 50 images over 20 classes. The
+    result is for the lossless adapter at 16/255 and 500 steps and says nothing about the legacy
+    adapter. Output in `results/screen/` (not versioned).
+  - Defect: `screen_eval` pulled run 1 without the stored images, so `defended_loss_dangerzone_ll.json`
+    has 0 adaptive entries and G3 is not yet evaluated for run 1. Fixed (pull_npy) and pushed;
+    the next session reruns `screen_eval`.
+  - Run 2 (`screen_jpeg50_e16`) was at 27 of 50 images on Drive when last checked (2026-10-27).
 
 ## Pending
 
