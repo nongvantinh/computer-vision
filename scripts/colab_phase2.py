@@ -253,7 +253,7 @@ def stage_screen_eval():
     for rid, adaptive, _ in SCREEN_RUNS:
         if SCREEN_ONLY and rid not in SCREEN_ONLY:
             continue
-        pull(rid)
+        pull_npy(rid)   # the defended loss reads the stored images
         sh(f"python scripts/eval_defended_loss.py --adaptive-run {LOCAL_RUNS}/{rid} "
            f"--oblivious-run {DRIVE_RUNS}/{BASE_RUN} --defense {adaptive} "
            f"--manifest {SCREEN_MANIFEST} "
