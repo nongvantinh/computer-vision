@@ -144,6 +144,15 @@ terminal path using Google's Colab CLI (`uv tool install google-colab-cli`) via
 The CLI login is interactive (per Google account); see
 `docs/implementation/colab-cli.md`.
 
+**Phase 2 Colab notebook (`notebooks/colab_phase2.ipynb`): the operator only clicks Run all.**
+The agent sets the settings cell (`STAGES`, `SCREEN_ONLY`, step budget, hours) for the next
+session, commits and pushes it, and then tells the operator to open the notebook from GitHub and
+Run all. The operator is never asked to edit a cell, pick a stage or type a run id. If the next
+stage needs something that only the agent can do (for example a local Dangerzone sanitize before
+scoring), the agent does it first and sets the stages afterwards. The notebook keeps its own
+state on Drive, resumes finished work and copies run directories to Drive every 2 minutes, so a
+session that stops early is simply run again with the same settings.
+
 ## Status
 
 - [x] Repo cleaned; setup preserved.
