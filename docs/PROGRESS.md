@@ -58,10 +58,22 @@ Live status file. Updated at each step; the commit history has the details.
     does not transfer to JPEG. Replicates the 8/10 pilot at 50 images over 20 classes. The
     result is for the lossless adapter at 16/255 and 500 steps and says nothing about the legacy
     adapter. Output in `results/screen/` (not versioned).
-  - Defect: `screen_eval` pulled run 1 without the stored images, so `defended_loss_dangerzone_ll.json`
-    has 0 adaptive entries and G3 is not yet evaluated for run 1. Fixed (pull_npy) and pushed;
-    the next session reruns `screen_eval`.
-  - Run 2 (`screen_jpeg50_e16`) was at 27 of 50 images on Drive when last checked (2026-10-27).
+  - Defect: `screen_eval` pulled run 1 without the stored images, so the first
+    `defended_loss_dangerzone_ll.json` had 0 adaptive entries. Fixed (pull_npy, pushed) and rerun.
+  - Run 2 `screen_jpeg50_e16` finished (2026-10-27, after 4 launches): 50/50 attacks, 200/200
+    defense rows. Adaptive JPEG 50 at 500 steps succeeds through real JPEG 50 on 12/50 (24%, CI
+    13.1 to 38.2%) against 0/50 non-adaptive (paired difference 24 points, CI 12 to 37%, 12
+    discordant one way, 0 the other, Holm-adjusted p 5e-4). JPEG 75/90 3/50 each, D0 2/50.
+    JPEG 50 is not robust to this attacker; 24% is a lower bound, since the 10-image pilot rose
+    from 4/10 at 500 steps to 7/10 at 2000.
+  - Gate G3 (defended loss, scored with the fixed stage): adaptive below non-adaptive on 50/50
+    images for both runs. Median defended loss: lossless Dangerzone surrogate 0.40 vs 4.83;
+    JPEG 50 3.0 vs 7.6.
+  - Exploratory comparison, lossless Dangerzone vs JPEG 50, each attacked through its own defense
+    at the same 500 steps: 40/50 vs 12/50, difference 56 points (CI 39 to 68%), Holm p 1e-7.
+    Read with care: the JPEG 50 attack had not converged at 500 steps and the Dangerzone surrogate
+    is fitted, so the comparison measures how far each attack got at equal effort. It does not say
+    Dangerzone is weaker than JPEG at convergence, and it does not support CDR over JPEG.
 
 ## Pending
 
