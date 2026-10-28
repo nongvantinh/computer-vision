@@ -74,6 +74,10 @@ Live status file. Updated at each step; the commit history has the details.
     Read with care: the JPEG 50 attack had not converged at 500 steps and the Dangerzone surrogate
     is fitted, so the comparison measures how far each attack got at equal effort. It does not say
     Dangerzone is weaker than JPEG at convergence, and it does not support CDR over JPEG.
+  - Run 3 `screen_dz_e16` (legacy Dangerzone adapter, 16/255, 500 steps) attack finished (2026-10-28,
+    2 launches): 50/50 attacks, 200/200 standard-defense rows. Real Dangerzone sanitize done locally
+    with the legacy embedding (`--embed jpeg`): 50 new, 0 failed, uploaded to Drive as `dz/` (101
+    files). Next Colab session: `screen_eval,screen_dz` for run 3.
 
 ## Pending
 
