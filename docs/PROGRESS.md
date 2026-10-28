@@ -77,7 +77,16 @@ Live status file. Updated at each step; the commit history has the details.
   - Run 3 `screen_dz_e16` (legacy Dangerzone adapter, 16/255, 500 steps) attack finished (2026-10-28,
     2 launches): 50/50 attacks, 200/200 standard-defense rows. Real Dangerzone sanitize done locally
     with the legacy embedding (`--embed jpeg`): 50 new, 0 failed, uploaded to Drive as `dz/` (101
-    files). Next Colab session: `screen_eval,screen_dz` for run 3.
+    files).
+  - Run 3 scored (2026-10-28). Real Dangerzone with the legacy adapter (embeds a JPEG 75): adaptive
+    21/50 (42%, CI 28.2 to 56.8%), non-adaptive 0/50; paired diff 42 points (CI 27.5 to 55.8%),
+    21 vs 0 discordant, Holm p about 3e-6. G3 passes (50/50 images, medians 1.12 vs 7.45). Same
+    attacker and budget on the lossless adapter reached 40/50, so the JPEG 75 stage in the legacy
+    adapter roughly halves attack success at 500 steps. Exploratory legacy Dangerzone vs JPEG 50
+    (adaptive, equal 500 steps): 21/50 vs 12/50, diff 18 points (CI 5.8 to 29.5%), 10 vs 1
+    discordant, Holm p about 0.012. The JPEG 50 attack is unconverged and the Dangerzone
+    surrogate is fitted, so this does not rank the defenses. Lossless and legacy stay separate.
+  - Next: the three 8/255 runs (about 11 GPU hours each), starting with `screen_dz_ll_e08`.
 
 ## Pending
 
