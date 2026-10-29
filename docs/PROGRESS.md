@@ -89,7 +89,14 @@ Live status file. Updated at each step; the commit history has the details.
   - Next: the three 8/255 runs (about 11 GPU hours each), starting with `screen_dz_ll_e08`.
   - Run 4 `screen_dz_ll_e08` (lossless adapter, 8/255, 500 steps) attack finished (3 launches): 50/50
     attacks, 200/200 standard-defense rows. Local lossless sanitize: 50 new, 0 failed, uploaded as
-    `dz_ll/` (101 files). Next Colab session: `screen_eval,screen_dz` for run 4.
+    `dz_ll/` (101 files).
+  - Run 4 scored (2026-10-29), lossless adapter, 8/255, 500 steps, exploratory: through real
+    Dangerzone adaptive 13/50 (26%, CI 14.6 to 40.3%) vs non-adaptive 1/50 (2%); paired diff 24
+    points (CI 10.2 to 37.8%), 13 vs 1 discordant, Holm p about 0.004. G3 passes (50/50, medians
+    1.74 vs 5.46). Transfer to JPEG 50/75/90 is 0/50. Success at 8/255 (26%) is about a third of
+    16/255 (80%) for the same attacker and budget. Undefended D0 reaches 6/50 under the adaptive
+    images and 13/50 under the non-adaptive ones at 8/255.
+  - Next: `screen_jpeg50_e08` attack.
 
 ## Pending
 
