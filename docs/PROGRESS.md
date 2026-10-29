@@ -102,6 +102,7 @@ Live status file. Updated at each step; the commit history has the details.
     no error before it; the cell 6 copy and `phase2_last.log` did not run). The in-script sync had
     kept Drive current, so nothing was lost. Likely cause: Colab's per-session runtime cap, since
     the attack itself ran steadily. The same settings finish the last 5 images (about 1 h).
+  - Run 5 attack finished (launch 4 resumed the last 7 images, 50/50, 200/200 rows). Next session: `screen_eval` for run 5 (JPEG 50 needs no sanitize), then the attack for `screen_dz_e08`.
 
 ## Pending
 
