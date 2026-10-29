@@ -87,6 +87,9 @@ Live status file. Updated at each step; the commit history has the details.
     discordant, Holm p about 0.012. The JPEG 50 attack is unconverged and the Dangerzone
     surrogate is fitted, so this does not rank the defenses. Lossless and legacy stay separate.
   - Next: the three 8/255 runs (about 11 GPU hours each), starting with `screen_dz_ll_e08`.
+  - Run 4 `screen_dz_ll_e08` (lossless adapter, 8/255, 500 steps) attack finished (3 launches): 50/50
+    attacks, 200/200 standard-defense rows. Local lossless sanitize: 50 new, 0 failed, uploaded as
+    `dz_ll/` (101 files). Next Colab session: `screen_eval,screen_dz` for run 4.
 
 ## Pending
 
