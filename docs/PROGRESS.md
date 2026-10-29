@@ -97,6 +97,11 @@ Live status file. Updated at each step; the commit history has the details.
     16/255 (80%) for the same attacker and budget. Undefended D0 reaches 6/50 under the adaptive
     images and 13/50 under the non-adaptive ones at 8/255.
   - Next: `screen_jpeg50_e08` attack.
+  - Run 5 `screen_jpeg50_e08` attack, launch 4 (2026-10-29): watched from 10:30. About 12.3 minutes per
+    image, 45/50 attacked on Drive when the runtime stopped at about 19:50 (9 h 20 min after start,
+    no error before it; the cell 6 copy and `phase2_last.log` did not run). The in-script sync had
+    kept Drive current, so nothing was lost. Likely cause: Colab's per-session runtime cap, since
+    the attack itself ran steadily. The same settings finish the last 5 images (about 1 h).
 
 ## Pending
 
