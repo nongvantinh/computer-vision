@@ -103,6 +103,13 @@ Live status file. Updated at each step; the commit history has the details.
     kept Drive current, so nothing was lost. Likely cause: Colab's per-session runtime cap, since
     the attack itself ran steadily. The same settings finish the last 5 images (about 1 h).
   - Run 5 attack finished (launch 4 resumed the last 7 images, 50/50, 200/200 rows). Next session: `screen_eval` for run 5 (JPEG 50 needs no sanitize), then the attack for `screen_dz_e08`.
+  - Run 5 scored (2026-10-29), JPEG 50 adaptive, 8/255, 500 steps, exploratory: through real JPEG 50
+    adaptive 6/50 (12%, CI 4.5 to 24.3%) vs non-adaptive 0/50; paired diff 12 points (CI 2.4 to
+    23.8%), 6 vs 0 discordant, Holm p 0.0625 (not below 0.05 in the family of 5). G3 passes (50/50,
+    medians 4.64 vs 7.79). Exploratory lossless Dangerzone vs JPEG 50 at 8/255 (adaptive, equal
+    steps): 13/50 vs 6/50, diff 14 points (CI 0.1 to 27.8%), 10 vs 3 discordant, Holm p 0.09. Both
+    attacks are unconverged at 500 steps, so neither number is a ceiling.
+  - Next: `screen_dz_e08` attack (last screen run), then local legacy sanitize and scoring.
 
 ## Pending
 
