@@ -113,6 +113,9 @@ Live status file. Updated at each step; the commit history has the details.
   - Run 6 `screen_dz_e08` (legacy adapter, 8/255, 500 steps) attack finished (3 launches): 50/50
     attacks, 200/200 rows. Local legacy sanitize (`--embed jpeg`): 50 new, 0 failed, uploaded as
     `dz/` (101 files). Next Colab session: `screen_eval,screen_dz` for run 6, the last screen run.
+  - Run 6 scored and screen complete (2026-10-30). Legacy Dangerzone 8/255: adaptive 7/50 (14%, CI
+    5.8 to 26.7%) vs 0/50; diff 14 points, Holm p 0.063; G3 50/50 (medians 3.11 vs 7.61). All six
+    runs scored, gates written to `results/screen/gates/`, report in `docs/phase2_screen_report.md`.
 
 ## Pending
 
