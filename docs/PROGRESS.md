@@ -110,6 +110,9 @@ Live status file. Updated at each step; the commit history has the details.
     steps): 13/50 vs 6/50, diff 14 points (CI 0.1 to 27.8%), 10 vs 3 discordant, Holm p 0.09. Both
     attacks are unconverged at 500 steps, so neither number is a ceiling.
   - Next: `screen_dz_e08` attack (last screen run), then local legacy sanitize and scoring.
+  - Run 6 `screen_dz_e08` (legacy adapter, 8/255, 500 steps) attack finished (3 launches): 50/50
+    attacks, 200/200 rows. Local legacy sanitize (`--embed jpeg`): 50 new, 0 failed, uploaded as
+    `dz/` (101 files). Next Colab session: `screen_eval,screen_dz` for run 6, the last screen run.
 
 ## Pending
 
