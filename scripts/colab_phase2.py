@@ -74,6 +74,18 @@ SCREEN_RUNS = [   # priority order: 16/255 first, Dangerzone-lossless first
     ("screen_jpeg50_e08", "jpeg50", "0.0313725490"),
     ("screen_dz_e08", "dangerzone", "0.0313725490"),
 ]
+# Confirmatory N = 200 runs (docs/phase2_preregistration.md): the registered family attacks
+# JPEG 50 and lossless Dangerzone at 8/255 and 16/255 on the full 200-image manifest, at the
+# screen step budget. Priority order: 16/255 first.
+CONF_STEPS = int(globals().get("CONF_STEPS", 500))
+CONF_ONLY = [x for x in str(globals().get("CONF_ONLY", "")).split(",") if x]
+CONF_DEFENSES = "D0,jpeg90,jpeg75,jpeg50"
+CONF_RUNS = [
+    ("conf_dz_ll_e16", "dangerzone_ll", "0.0627450980"),
+    ("conf_jpeg50_e16", "jpeg50", "0.0627450980"),
+    ("conf_dz_ll_e08", "dangerzone_ll", "0.0313725490"),
+    ("conf_jpeg50_e08", "jpeg50", "0.0313725490"),
+]
 LIGHT = ("'--include=*/' '--include=*.json' '--include=*.jsonl' '--include=*.csv' "
          "'--include=*.yaml' '--include=*.png' '--exclude=*'")
 WITH_NPY = ("'--include=*/' '--include=*.json' '--include=*.jsonl' '--include=*.csv' "
@@ -273,6 +285,45 @@ def stage_screen_dz():
         push(rid)
 
 
+def _conf(rid):
+    return not CONF_ONLY or rid in CONF_ONLY
+
+
+def stage_conf():
+    for rid, adaptive, eps in CONF_RUNS:
+        if not _conf(rid):
+            continue
+        pull_npy(rid)
+        sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+           f"--adaptive-defense {adaptive} --epsilon {eps} "
+           f"--steps {CONF_STEPS} --defenses {CONF_DEFENSES} --experiment-id {rid} "
+           f"--max-hours {SESSION_HOURS}", cwd=PROJECT)
+        push(rid)
+
+
+def stage_conf_eval():
+    for rid, adaptive, _ in CONF_RUNS:
+        if not _conf(rid):
+            continue
+        pull_npy(rid)
+        sh(f"python scripts/eval_defended_loss.py --adaptive-run {LOCAL_RUNS}/{rid} "
+           f"--oblivious-run {DRIVE_RUNS}/{BASE_RUN} --defense {adaptive} "
+           f"--out {LOCAL_RUNS}/{rid}/defended_loss_{adaptive}.json", cwd=PROJECT)
+        push(rid)
+
+
+def stage_conf_dz():
+    for rid, adaptive, _ in CONF_RUNS:
+        if not adaptive.startswith("dangerzone") or not _conf(rid):
+            continue
+        variant = "lossless" if adaptive.endswith("_ll") else "jpeg"
+        d = "dz_ll" if variant == "lossless" else "dz"
+        pull(rid)
+        sh(f"python scripts/dangerzone_finalize.py --run {LOCAL_RUNS}/{rid} "
+           f"--variant {variant} --dz-dir {DRIVE_RUNS}/{rid}/{d}", cwd=PROJECT)
+        push(rid)
+
+
 def stage_analysis():
     pull(RUN_ID)
     sh(f"python scripts/run_analysis.py --run {LOCAL_RUNS}/{RUN_ID}", cwd=PROJECT)
@@ -282,7 +333,8 @@ def stage_analysis():
 STAGES = {"controls": stage_controls, "dz_answers": stage_dz_answers, "pilot": stage_pilot,
           "pilot_eval": stage_pilot_eval, "pilot_dz": stage_pilot_dz,
           "analysis": stage_analysis, "jpeg_ext": stage_jpeg_ext, "screen": stage_screen,
-          "screen_eval": stage_screen_eval, "screen_dz": stage_screen_dz}
+          "screen_eval": stage_screen_eval, "screen_dz": stage_screen_dz,
+          "conf": stage_conf, "conf_eval": stage_conf_eval, "conf_dz": stage_conf_dz}
 
 todo = [s.strip() for s in STAGE.split(",") if s.strip()]
 bad = [s for s in todo if s not in STAGES]

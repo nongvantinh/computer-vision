@@ -116,6 +116,15 @@ Live status file. Updated at each step; the commit history has the details.
   - Run 6 scored and screen complete (2026-10-30). Legacy Dangerzone 8/255: adaptive 7/50 (14%, CI
     5.8 to 26.7%) vs 0/50; diff 14 points, Holm p 0.063; G3 50/50 (medians 3.11 vs 7.61). All six
     runs scored, gates written to `results/screen/gates/`, report in `docs/phase2_screen_report.md`.
+  - Confirmatory stage started (2026-10-30), by the user's choice of 500 steps per attack condition
+    (about 40 GPU hours each). Runs follow the registered family: JPEG 50 and lossless Dangerzone
+    at 16/255 and 8/255 on the full 200 images (`conf_dz_ll_e16`, `conf_jpeg50_e16`,
+    `conf_dz_ll_e08`, `conf_jpeg50_e08`, in that order). The legacy adapter is not in the registered
+    family and is not rerun at N=200. Same attack and seed as the screen, fresh run directories, so
+    the screen images are attacked again and the screen stays a separate exploratory record. Colab
+    stages `conf`, `conf_eval`, `conf_dz` added (dry-run checked). About 4 sessions per run, 16
+    sessions in total. Reporting limits: attacks stay unconverged at 500 steps (screen S2 proxy), so
+    rates are lower bounds and a null at N=200 would not show robustness.
 
 ## Pending
 
