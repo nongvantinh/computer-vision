@@ -289,6 +289,15 @@ def _conf(rid):
     return not CONF_ONLY or rid in CONF_ONLY
 
 
+def _conf_complete(rid):
+    """True once the attack finished all 200 images on Drive (scoring waits for that)."""
+    try:
+        prog = json.load(open(f"{DRIVE_RUNS}/{rid}/progress.json"))
+        return int(prog.get("adv_images", 0)) >= 200
+    except (OSError, ValueError):
+        return False
+
+
 def stage_conf():
     for rid, adaptive, eps in CONF_RUNS:
         if not _conf(rid):
@@ -303,7 +312,9 @@ def stage_conf():
 
 def stage_conf_eval():
     for rid, adaptive, _ in CONF_RUNS:
-        if not _conf(rid):
+        if not _conf(rid) or not _conf_complete(rid):
+            continue
+        if os.path.exists(f"{DRIVE_RUNS}/{rid}/defended_loss_{adaptive}.json"):
             continue
         pull_npy(rid)
         sh(f"python scripts/eval_defended_loss.py --adaptive-run {LOCAL_RUNS}/{rid} "
@@ -314,10 +325,13 @@ def stage_conf_eval():
 
 def stage_conf_dz():
     for rid, adaptive, _ in CONF_RUNS:
-        if not adaptive.startswith("dangerzone") or not _conf(rid):
+        if not adaptive.startswith("dangerzone") or not _conf(rid) or not _conf_complete(rid):
             continue
         variant = "lossless" if adaptive.endswith("_ll") else "jpeg"
         d = "dz_ll" if variant == "lossless" else "dz"
+        if not os.path.isdir(f"{DRIVE_RUNS}/{rid}/{d}"):
+            print(f"conf_dz: {rid} has no sanitized {d}/ on Drive yet, skipped", flush=True)
+            continue
         pull(rid)
         sh(f"python scripts/dangerzone_finalize.py --run {LOCAL_RUNS}/{rid} "
            f"--variant {variant} --dz-dir {DRIVE_RUNS}/{rid}/{d}", cwd=PROJECT)

@@ -125,6 +125,11 @@ Live status file. Updated at each step; the commit history has the details.
     stages `conf`, `conf_eval`, `conf_dz` added (dry-run checked). About 4 sessions per run, 16
     sessions in total. Reporting limits: attacks stay unconverged at 500 steps (screen S2 proxy), so
     rates are lower bounds and a null at N=200 would not show robustness.
+  - `conf_dz_ll_e16` attack finished (9 launches, 200/200 images, 800/800 standard rows). Local
+    lossless sanitize: 200 new, 0 failed, uploaded as `dz_ll/` (401 files). The Colab scoring stages
+    now skip runs whose attack is incomplete or already scored, so one session can score this run
+    (`conf_eval,conf_dz`) and then start the `conf_jpeg50_e16` attack (`conf`). The rclone login
+    expired once and was reconnected by the user.
 
 ## Pending
 
