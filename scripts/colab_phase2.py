@@ -329,6 +329,14 @@ def stage_conf_dz():
             continue
         variant = "lossless" if adaptive.endswith("_ll") else "jpeg"
         d = "dz_ll" if variant == "lossless" else "dz"
+        try:
+            scored = sum(1 for l in open(f"{DRIVE_RUNS}/{rid}/defense_results.jsonl")
+                         if f'"defense": "{adaptive}"' in l)
+        except OSError:
+            scored = 0
+        if scored >= 200:
+            print(f"conf_dz: {rid} already scored through real Dangerzone, skipped", flush=True)
+            continue
         if not os.path.isdir(f"{DRIVE_RUNS}/{rid}/{d}"):
             print(f"conf_dz: {rid} has no sanitized {d}/ on Drive yet, skipped", flush=True)
             continue
