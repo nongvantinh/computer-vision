@@ -130,6 +130,10 @@ Live status file. Updated at each step; the commit history has the details.
     now skip runs whose attack is incomplete or already scored, so one session can score this run
     (`conf_eval,conf_dz`) and then start the `conf_jpeg50_e16` attack (`conf`). The rclone login
     expired once and was reconnected by the user.
+  - `conf_jpeg50_e16` attack finished (11 launches, 200/200 images, 800/800 rows). Real JPEG 50
+    success under the adaptive attack: 42/200 (21%), JPEG 75 10/200, JPEG 90 12/200, D0 11/200
+    (descriptive; the paired test against `full_200` waits for the final analysis). The screen
+    gave 12/50 (24%). Notebook now scores it (`conf_eval`) and starts `conf_dz_ll_e08` (`conf`).
 
 ## Pending
 
