@@ -134,6 +134,10 @@ Live status file. Updated at each step; the commit history has the details.
     success under the adaptive attack: 42/200 (21%), JPEG 75 10/200, JPEG 90 12/200, D0 11/200
     (descriptive; the paired test against `full_200` waits for the final analysis). The screen
     gave 12/50 (24%). Notebook now scores it (`conf_eval`) and starts `conf_dz_ll_e08` (`conf`).
+  - `conf_dz_ll_e08` attack finished (9 launches, 200/200 images, 800/800 rows). Local lossless
+    sanitize: 200 new, 0 failed, uploaded as `dz_ll/` (401 files). Standard rows: D0 17/200,
+    JPEG 90/75/50 0/200 (descriptive). Notebook now scores it through real Dangerzone
+    (`conf_eval,conf_dz`) and starts `conf_jpeg50_e08` (`conf`).
 
 ## Pending
 
