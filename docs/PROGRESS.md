@@ -153,6 +153,15 @@ Live status file. Updated at each step; the commit history has the details.
     attacker reaches higher success against Dangerzone than against JPEG 50 at equal steps.
     Caveats: 500 steps unconverged, the Dangerzone attack uses a fitted surrogate and the JPEG
     attack a differentiable JPEG, so the two attacks are not equally strong by construction.
+  - Confirmatory gates (`results/confirmatory/gates/<run>.json`, not versioned). All four runs:
+    G1 pass (200 jobs), G3 pass (adaptive loss below oblivious on 200/200 images), G4 pass (0 failed
+    rows, all inside the ball), G5 fail as recorded in the pilot (96.8%), G5a and G5b pass. G2 passes
+    for the Dangerzone surrogate (48.9 and 48.1 dB held out) and is not evaluated for the JPEG runs
+    (no fitted surrogate report; the JPEG model is analytic). Median defended loss after the attack:
+    Dangerzone 0.43 (16/255) and 1.63 (8/255); JPEG 50 2.70 (16/255) and 4.46 (8/255), against
+    oblivious medians of 5.0 to 7.7. The JPEG 50 attack ends at higher loss than the Dangerzone
+    attack, which fits unconverged optimization and weakens the defense comparison. No more Colab
+    sessions are needed for the confirmatory stage.
 
 ## Pending
 
