@@ -162,6 +162,15 @@ Live status file. Updated at each step; the commit history has the details.
     oblivious medians of 5.0 to 7.7. The JPEG 50 attack ends at higher loss than the Dangerzone
     attack, which fits unconverged optimization and weakens the defense comparison. No more Colab
     sessions are needed for the confirmatory stage.
+  - Paper draft written: `docs/paper/paper.tex` and `paper.pdf` (7 pages), figures from
+    `scripts/make_paper_figures.py` (`docs/paper/figures/`). Content: six registered tests, transfer
+    counts, convergence and gates, the exploratory legacy-adapter screen, limitations (unconverged
+    attacks, 500 vs 200 steps between conditions, unequal attack strength, one model and one CDR
+    tool) and a deviation appendix. Not yet done: Qwen2-VL-2B replication, typographic family,
+    500-step non-adaptive control, Phase 1 report erratum, slides.
+  - Note: `scripts/check_gates.py` rebuilds the derived tables when a run directory lacks defense
+    jobs and emptied the local `defense_results.jsonl` of the pulled runs. Drive copies were intact
+    and were pulled again. Do not run it on a partial local copy without re-pulling afterwards.
 
 ## Pending
 
