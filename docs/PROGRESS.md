@@ -138,6 +138,21 @@ Live status file. Updated at each step; the commit history has the details.
     sanitize: 200 new, 0 failed, uploaded as `dz_ll/` (401 files). Standard rows: D0 17/200,
     JPEG 90/75/50 0/200 (descriptive). Notebook now scores it through real Dangerzone
     (`conf_eval,conf_dz`) and starts `conf_jpeg50_e08` (`conf`).
+  - `conf_dz_ll_e08` scored through real Dangerzone (lossless adapter): 58/200 (29%).
+    `conf_jpeg50_e08` attack finished (11 launches, 200/200 images): JPEG 50 18/200 (9%),
+    JPEG 75 3/200, JPEG 90 12/200, D0 11/200. All four confirmatory attacks are complete. The
+    notebook now runs `conf_eval` only, to score the defended loss and G3 for the last run.
+  - Confirmatory analysis (`scripts/analyze_confirmatory.py`, six tests, Holm, N=200 paired,
+    oblivious condition from `controls_v1`). Adaptive minus oblivious through the real defense:
+    JPEG 50 +9.0 points at 8/255 (18 vs 0 discordant, Holm p 8e-6) and +21.0 at 16/255
+    (42 vs 0, p 1e-12); Dangerzone (lossless adapter) +28.5 at 8/255 (57 vs 0, p 6e-17) and
+    +75.0 at 16/255 (150 vs 0, p 8e-45). Dangerzone minus JPEG 50 under adaptive attack:
+    +20.0 at 8/255 (43 vs 3, p 9e-10), +55.5 at 16/255 (113 vs 2, p 2e-30). All six reject
+    at the family level and the intervals exclude the 0.15 effect except the 8/255 JPEG 50
+    adaptivity effect, whose interval (+5.3 to +13.8) lies below it. Direction: an adaptive
+    attacker reaches higher success against Dangerzone than against JPEG 50 at equal steps.
+    Caveats: 500 steps unconverged, the Dangerzone attack uses a fitted surrogate and the JPEG
+    attack a differentiable JPEG, so the two attacks are not equally strong by construction.
 
 ## Pending
 
