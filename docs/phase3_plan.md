@@ -73,6 +73,17 @@ or the approximation is characterized in the paper; resumed attacks are not call
 Original 200-step results remain unchanged: new runs write only to new run directories, and local
 checksums of every historical run are recorded in `docs/provenance/raw_checksums.json`.
 
+**Outcome (2026-11-13): the check failed.** `continuation_equivalent` is false: image 1 of 4 passes,
+images 2 to 4 fail the loss criterion (tail-10 loss of R is 0.34, 0.37 against U1 0.16, 0.26 on two
+images, and the reverse on one), and image 3 also fails the success criterion. Two further facts
+from the same run: two uninterrupted 500-step runs (U1, U2) with the same seed end at L-infinity
+distance 32/255 from each other, so GPU attacks are not bit-reproducible, and the continuation
+from the stored Phase 1 array (P) lands at higher tail loss than U1 on 3 of 4 images. The record
+is `docs/provenance/continuation_validation.json`. Resumed attacks are therefore not used as the
+control. The fallback above applies: fresh 500-step oblivious attacks, runs `obl500s_e16` and
+`obl500s_e08` (stage `obl_scratch`, about 40 GPU hours per budget). The stage `obl` stays in the
+code, gated, and unused.
+
 ### 1.3 Matched-budget control
 Runs `obl500_e16` and `obl500_e08`: continue the stored `full_200` arrays by 300 steps with no
 defense in the loop, then score every array through D0, JPEG 90/75/50 on the GPU host and through

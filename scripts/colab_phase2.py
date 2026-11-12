@@ -353,6 +353,10 @@ def stage_conf_dz():
 OBL_MORE_STEPS = int(globals().get("OBL_MORE_STEPS", 300))
 OBL_DEFENSES = "D0,jpeg90,jpeg75,jpeg50"
 OBL_RUNS = [("obl500_e16", "0.0627450980"), ("obl500_e08", "0.0313725490")]
+# Fallback fixed in phase3_plan.md 1.2 and used because the continuation check failed: fresh
+# 500-step oblivious attacks from the same random start (seed 1234), no stored arrays involved.
+OBL_SCRATCH_RUNS = [("obl500s_e16", "0.0627450980"), ("obl500s_e08", "0.0313725490")]
+OBL_SCRATCH_STEPS = 500
 
 
 def stage_cont_validate():
@@ -390,8 +394,21 @@ def stage_obl():
         push(rid)
 
 
+def stage_obl_scratch():
+    """Fresh 500-step defense-unaware attacks, one per (image, epsilon), scored by every defense."""
+    for rid, eps in OBL_SCRATCH_RUNS:
+        if not _conf(rid):
+            continue
+        pull_npy(rid)
+        sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+           f"--epsilon {eps} --steps {OBL_SCRATCH_STEPS} "
+           f"--defenses {OBL_DEFENSES} --experiment-id {rid} --max-hours {SESSION_HOURS}",
+           cwd=PROJECT)
+        push(rid)
+
+
 def stage_obl_dz():
-    for rid, _ in OBL_RUNS:
+    for rid, _ in OBL_RUNS + OBL_SCRATCH_RUNS:
         if not _conf(rid) or not _conf_complete(rid):
             continue
         try:
@@ -422,7 +439,8 @@ STAGES = {"controls": stage_controls, "dz_answers": stage_dz_answers, "pilot": s
           "analysis": stage_analysis, "jpeg_ext": stage_jpeg_ext, "screen": stage_screen,
           "screen_eval": stage_screen_eval, "screen_dz": stage_screen_dz,
           "conf": stage_conf, "conf_eval": stage_conf_eval, "conf_dz": stage_conf_dz,
-          "cont_validate": stage_cont_validate, "obl": stage_obl, "obl_dz": stage_obl_dz}
+          "cont_validate": stage_cont_validate, "obl": stage_obl, "obl_scratch": stage_obl_scratch,
+          "obl_dz": stage_obl_dz}
 
 todo = [s.strip() for s in STAGE.split(",") if s.strip()]
 bad = [s for s in todo if s not in STAGES]

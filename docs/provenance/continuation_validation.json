@@ -1,0 +1,250 @@
+{
+ "rule": {
+  "rel_loss_tol": 0.05,
+  "noise_factor": 1.25,
+  "abs_linf_tol": 1e-06,
+  "n_images": 4,
+  "eps": 0.06274509803921569,
+  "steps": [
+   200,
+   500
+  ]
+ },
+ "rows": [
+  {
+   "image_id": "n03445777/ILSVRC2012_val_00011581.JPEG",
+   "class": "golf_ball",
+   "target": "parachute",
+   "runtime_s": 2834.022385428,
+   "prefix200_curve_equal_U1": false,
+   "prefix200_array_linf_vs_U1_curve_ref": null,
+   "linf_U1_U2": 0.1254902184009552,
+   "linf_U1_R": 0.1254902184009552,
+   "linf_U1_P": 0.1254902184009552,
+   "loss_tail": {
+    "U1": 0.24868928492069245,
+    "U2": 0.21509998813271522,
+    "R": 0.2226073533296585,
+    "P": 0.25358627289533614
+   },
+   "hash": {
+    "U1": "0736d0821345d79e",
+    "U2": "0ad8513a02f0e5c7",
+    "R": "23cc0bc111b8933c"
+   },
+   "score": {
+    "U1": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "parachute",
+     "answer_jpeg50": "Clown"
+    },
+    "U2": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "parachute",
+     "answer_jpeg50": "Golf ball"
+    },
+    "R": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "parachute",
+     "answer_jpeg50": "Cd"
+    },
+    "P": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "parachute",
+     "answer_jpeg50": "Clown"
+    }
+   },
+   "stored_phase1_array_found": true,
+   "stored_array_in_ball": true
+  },
+  {
+   "image_id": "n02111889/ILSVRC2012_val_00041880.JPEG",
+   "class": "Samoyed",
+   "target": "dingo",
+   "runtime_s": 2832.289607222001,
+   "prefix200_curve_equal_U1": false,
+   "prefix200_array_linf_vs_U1_curve_ref": null,
+   "linf_U1_U2": 0.1254902184009552,
+   "linf_U1_R": 0.1254902184009552,
+   "linf_U1_P": 0.1254902184009552,
+   "loss_tail": {
+    "U1": 0.15708901807665826,
+    "U2": 0.15394210666418076,
+    "R": 0.3375325284898281,
+    "P": 0.5014055237174034
+   },
+   "hash": {
+    "U1": "2f5ab165f31d0144",
+    "U2": "66467060ddc8d0c9",
+    "R": "b1929904131b2c95"
+   },
+   "score": {
+    "U1": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "dingo",
+     "answer_jpeg50": "Dog"
+    },
+    "U2": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "dingo",
+     "answer_jpeg50": "Dog"
+    },
+    "R": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "dingo",
+     "answer_jpeg50": "Dog"
+    },
+    "P": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "dingo",
+     "answer_jpeg50": "Dog"
+    }
+   },
+   "stored_phase1_array_found": true,
+   "stored_array_in_ball": true
+  },
+  {
+   "image_id": "n03888257/ILSVRC2012_val_00001440.JPEG",
+   "class": "parachute",
+   "target": "tench",
+   "runtime_s": 2830.215129987,
+   "prefix200_curve_equal_U1": false,
+   "prefix200_array_linf_vs_U1_curve_ref": null,
+   "linf_U1_U2": 0.1254902184009552,
+   "linf_U1_R": 0.1254902184009552,
+   "linf_U1_P": 0.1254902184009552,
+   "loss_tail": {
+    "U1": 0.2593704342842102,
+    "U2": 0.22994600906968116,
+    "R": 0.3702351823449135,
+    "P": 0.5881390869617462
+   },
+   "hash": {
+    "U1": "41423063187b41a8",
+    "U2": "944f70d1a6e45abf",
+    "R": "7f33bf5259e3ca51"
+   },
+   "score": {
+    "U1": {
+     "D0": 0,
+     "jpeg50": 0,
+     "answer_D0": "tenchu",
+     "answer_jpeg50": "Kite"
+    },
+    "U2": {
+     "D0": 0,
+     "jpeg50": 0,
+     "answer_D0": "tenchu",
+     "answer_jpeg50": "Kite"
+    },
+    "R": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "tench",
+     "answer_jpeg50": "Kite"
+    },
+    "P": {
+     "D0": 0,
+     "jpeg50": 0,
+     "answer_D0": "tenchu",
+     "answer_jpeg50": "Kite"
+    }
+   },
+   "stored_phase1_array_found": true,
+   "stored_array_in_ball": true
+  },
+  {
+   "image_id": "n02099601/ILSVRC2012_val_00031731.JPEG",
+   "class": "golden_retriever",
+   "target": "English_springer",
+   "runtime_s": 2844.7629777519996,
+   "prefix200_curve_equal_U1": false,
+   "prefix200_array_linf_vs_U1_curve_ref": null,
+   "linf_U1_U2": 0.1254902184009552,
+   "linf_U1_R": 0.1254902184009552,
+   "linf_U1_P": 0.1254902184009552,
+   "loss_tail": {
+    "U1": 0.3913402706384659,
+    "U2": 0.37600685358047486,
+    "R": 0.20659884065389633,
+    "P": 0.3504142940044403
+   },
+   "hash": {
+    "U1": "51d51e1dfc9fae8c",
+    "U2": "4a985d7c320b29a3",
+    "R": "e23f2b03000891b6"
+   },
+   "score": {
+    "U1": {
+     "D0": 0,
+     "jpeg50": 0,
+     "answer_D0": "Dog",
+     "answer_jpeg50": "Dog"
+    },
+    "U2": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "English_springer",
+     "answer_jpeg50": "Dog"
+    },
+    "R": {
+     "D0": 1,
+     "jpeg50": 0,
+     "answer_D0": "English_springer",
+     "answer_jpeg50": "Dog"
+    },
+    "P": {
+     "D0": 0,
+     "jpeg50": 0,
+     "answer_D0": "English",
+     "answer_jpeg50": "Dog"
+    }
+   },
+   "stored_phase1_array_found": true,
+   "stored_array_in_ball": true
+  }
+ ],
+ "verdicts": [
+  {
+   "image_id": "n03445777/ILSVRC2012_val_00011581.JPEG",
+   "bitwise_deterministic_floor": false,
+   "linf_ok": true,
+   "loss_ok": true,
+   "success_ok": true,
+   "pass": true
+  },
+  {
+   "image_id": "n02111889/ILSVRC2012_val_00041880.JPEG",
+   "bitwise_deterministic_floor": false,
+   "linf_ok": true,
+   "loss_ok": false,
+   "success_ok": true,
+   "pass": false
+  },
+  {
+   "image_id": "n03888257/ILSVRC2012_val_00001440.JPEG",
+   "bitwise_deterministic_floor": false,
+   "linf_ok": true,
+   "loss_ok": false,
+   "success_ok": false,
+   "pass": false
+  },
+  {
+   "image_id": "n02099601/ILSVRC2012_val_00031731.JPEG",
+   "bitwise_deterministic_floor": false,
+   "linf_ok": true,
+   "loss_ok": false,
+   "success_ok": true,
+   "pass": false
+  }
+ ],
+ "continuation_equivalent": false
+}
