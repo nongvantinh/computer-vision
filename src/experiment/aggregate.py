@@ -65,3 +65,19 @@ def aggregate(lay: RunLayout) -> dict:
     }
     atomic_write_json(lay.summary, summary)
     return summary
+
+
+def ensure_derived(lay: RunLayout) -> bool:
+    """Build the derived JSONL tables only when they are missing AND job files exist.
+
+    Analysis and validation scripts call this instead of `aggregate`. It never overwrites an
+    existing table and never writes when there are no jobs to collate, so a partial local copy
+    of a run (tables pulled, jobs not) cannot be emptied by an analysis step. Returns True if
+    it wrote anything. Only the experiment runners may call `aggregate` directly.
+    """
+    have_tables = lay.defense_results.exists() and lay.defense_results.stat().st_size > 0
+    has_jobs = lay.defense_jobs.exists() and any(lay.defense_jobs.glob("*.json"))
+    if have_tables or not has_jobs:
+        return False
+    aggregate(lay)
+    return True

@@ -181,3 +181,27 @@ Live status file. Updated at each step; the commit history has the details.
 ## Blockers
 
 None.
+
+## Phase 3 (internal validity, started 2026-11-12)
+
+Plan, pre-specified rules and GPU estimates: `docs/phase3_plan.md`. Review feedback accepted; the
+equal-budget control comes before the second VLM.
+
+- Done without GPU: exact-match success metric (`src/evaluation/labels.py`, `configs/label_map.json`,
+  `scripts/rescore_predictions.py`; 53 historical successes lost under exact match across all runs, 0
+  rows disagree with the stored flags); corrected confirmatory tests (`scripts/analyze_confirmatory.py
+  --metric exact`: all six still reject, Dangerzone 16/255 effect +71.5 points instead of +75.0); clean
+  accuracy against ground truth (68.5% accepted-set, 12.5% exact class name, unchanged by JPEG 50 or
+  lossless Dangerzone); independent statistics tests (24 checks); G5 provenance
+  (`docs/provenance/g5_provenance.md`: for 39 of 39 differing rows the adversarial array was written after
+  its D0 job, for 560 of 561 agreeing rows before it); read-only analysis guard (`ensure_derived`, the
+  checksum tool and `docs/provenance/raw_checksums.json`); surrogate directional check (median cosine 0.993
+  at 16/255 and 0.977 at 8/255 against 0.78 for identity).
+- Prepared, waiting for a Colab session: stage `cont_validate` (continuation equals an uninterrupted
+  run, pre-specified tolerances, about 3 GPU hours) then stage `obl` (500-step oblivious control, both
+  budgets, about 48 GPU hours, about 10 sessions). `obl` refuses to start unless the check passed. The
+  notebook is set to `cont_validate,obl`. After `obl_e16` finishes: local lossless sanitize, then stage
+  `obl_dz` scores it through real Dangerzone.
+- Open risks: H1 may shrink once the oblivious attack gets 500 steps; attacks are unconverged; second
+  model, adapter ablation and frequency analysis not started; literature search not done; the paper draft
+  (`docs/paper/paper.tex`) predates these corrections and will be rewritten after the evidence.

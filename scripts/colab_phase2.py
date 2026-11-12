@@ -346,6 +346,71 @@ def stage_conf_dz():
         push(rid)
 
 
+# --- matched-budget oblivious control (docs/phase3_plan.md 1.3) ---------------------------
+# The stored 200-step oblivious attacks (BASE_RUN) are continued for OBL_MORE_STEPS to reach the
+# same 500 steps as the adaptive attacks. One attack per (image, epsilon) is scored through every
+# defense. stage_cont_validate must have passed first (continuation equals an uninterrupted run).
+OBL_MORE_STEPS = int(globals().get("OBL_MORE_STEPS", 300))
+OBL_DEFENSES = "D0,jpeg90,jpeg75,jpeg50"
+OBL_RUNS = [("obl500_e16", "0.0627450980"), ("obl500_e08", "0.0313725490")]
+
+
+def stage_cont_validate():
+    """GPU check that continuing a stored attack equals an uninterrupted run (about 1 hour)."""
+    pull_npy(BASE_RUN)
+    sh(f"python scripts/validate_continuation.py --phase1 {LOCAL_RUNS}/{BASE_RUN} "
+       f"--out {PROJECT}/results/continuation", cwd=PROJECT)
+    sh(f"mkdir -p {DRIVE_DIR}/results/continuation && rsync -a {PROJECT}/results/continuation/ "
+       f"{DRIVE_DIR}/results/continuation/")
+
+
+def _continuation_equivalent():
+    """Gate fixed in advance: the control may only continue stored arrays if the check passed."""
+    try:
+        return bool(json.load(open(f"{DRIVE_DIR}/results/continuation/continuation.json"))
+                    .get("continuation_equivalent"))
+    except (OSError, ValueError):
+        return False
+
+
+def stage_obl():
+    if not DRY_RUN and not _continuation_equivalent():
+        print("obl: continuation equivalence not established (run cont_validate; it must pass). "
+              "No control attacks started.", flush=True)
+        return
+    for rid, eps in OBL_RUNS:
+        if not _conf(rid):
+            continue
+        pull_npy(BASE_RUN)
+        pull_npy(rid)
+        sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+           f"--epsilon {eps} --steps {OBL_MORE_STEPS} --init-from {LOCAL_RUNS}/{BASE_RUN} "
+           f"--defenses {OBL_DEFENSES} --experiment-id {rid} --max-hours {SESSION_HOURS}",
+           cwd=PROJECT)
+        push(rid)
+
+
+def stage_obl_dz():
+    for rid, _ in OBL_RUNS:
+        if not _conf(rid) or not _conf_complete(rid):
+            continue
+        try:
+            scored = sum(1 for l in open(f"{DRIVE_RUNS}/{rid}/defense_results.jsonl")
+                         if '"defense": "dangerzone_ll"' in l)
+        except OSError:
+            scored = 0
+        if scored >= 200:
+            print(f"obl_dz: {rid} already scored through real Dangerzone, skipped", flush=True)
+            continue
+        if not os.path.isdir(f"{DRIVE_RUNS}/{rid}/dz_ll"):
+            print(f"obl_dz: {rid} has no sanitized dz_ll/ on Drive yet, skipped", flush=True)
+            continue
+        pull(rid)
+        sh(f"python scripts/dangerzone_finalize.py --run {LOCAL_RUNS}/{rid} "
+           f"--variant lossless --dz-dir {DRIVE_RUNS}/{rid}/dz_ll", cwd=PROJECT)
+        push(rid)
+
+
 def stage_analysis():
     pull(RUN_ID)
     sh(f"python scripts/run_analysis.py --run {LOCAL_RUNS}/{RUN_ID}", cwd=PROJECT)
@@ -356,7 +421,8 @@ STAGES = {"controls": stage_controls, "dz_answers": stage_dz_answers, "pilot": s
           "pilot_eval": stage_pilot_eval, "pilot_dz": stage_pilot_dz,
           "analysis": stage_analysis, "jpeg_ext": stage_jpeg_ext, "screen": stage_screen,
           "screen_eval": stage_screen_eval, "screen_dz": stage_screen_dz,
-          "conf": stage_conf, "conf_eval": stage_conf_eval, "conf_dz": stage_conf_dz}
+          "conf": stage_conf, "conf_eval": stage_conf_eval, "conf_dz": stage_conf_dz,
+          "cont_validate": stage_cont_validate, "obl": stage_obl, "obl_dz": stage_obl_dz}
 
 todo = [s.strip() for s in STAGE.split(",") if s.strip()]
 bad = [s for s in todo if s not in STAGES]

@@ -20,7 +20,7 @@ from src.evaluation.statistics import (mcnemar, bootstrap_ci, paired_diff_ci,  #
 from src.evaluation.analysis_v2 import analyze_run  # noqa: E402
 from src.analysis.frontier import plot_frontier  # noqa: E402
 from src.experiment.layout import RunLayout  # noqa: E402
-from src.experiment.aggregate import aggregate  # noqa: E402
+from src.experiment.aggregate import ensure_derived  # noqa: E402
 
 log = get_logger("analysis")
 
@@ -42,7 +42,7 @@ def main() -> int:
                     help="pre-declared analysis plan (families of comparisons)")
     args = ap.parse_args()
     lay = RunLayout(Path(args.run))
-    aggregate(lay)  # refresh derived files from jobs first
+    ensure_derived(lay)  # read-only: never rewrites existing tables
 
     defrows = [r for r in _read_jsonl(lay.defense_results) if not r.get("error")]
     cleanrows = [r for r in _read_jsonl(lay.clean_results) if not r.get("error")]

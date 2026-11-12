@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.evaluation import gates  # noqa: E402
-from src.experiment.aggregate import aggregate  # noqa: E402
+from src.experiment.aggregate import ensure_derived  # noqa: E402
 from src.experiment.layout import RunLayout  # noqa: E402
 
 
@@ -36,7 +36,7 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     lay = RunLayout(Path(args.adaptive_run))
-    aggregate(lay)
+    ensure_derived(lay)   # read-only: never rewrites existing tables
     attack = _jobs(lay.attack_jobs)
     rows = [json.loads(l) for l in lay.defense_results.open() if l.strip()]
     res = [gates.g1_defense_in_loop(attack, args.steps),

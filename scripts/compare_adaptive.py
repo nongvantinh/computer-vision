@@ -20,15 +20,14 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.evaluation.adaptive_compare import run_confirmatory  # noqa: E402
-from src.experiment.aggregate import aggregate  # noqa: E402
+from src.experiment.aggregate import ensure_derived  # noqa: E402
 from src.experiment.layout import RunLayout  # noqa: E402
 from src.utils.resume import atomic_write_json  # noqa: E402
 
 
 def load_rows(run_dir: str) -> list[dict]:
     lay = RunLayout(Path(run_dir))
-    if not lay.defense_results.exists():
-        aggregate(lay)
+    ensure_derived(lay)
     return [json.loads(l) for l in lay.defense_results.open() if l.strip()]
 
 

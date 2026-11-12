@@ -22,7 +22,7 @@ import numpy as np  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.evaluation import screen_analysis as sa  # noqa: E402
-from src.experiment.aggregate import aggregate  # noqa: E402
+from src.experiment.aggregate import ensure_derived  # noqa: E402
 from src.experiment.layout import RunLayout  # noqa: E402
 
 EPS = {"e16": 0.0627450980, "e08": 0.0313725490}
@@ -32,8 +32,7 @@ RUN_ATTACK = {"screen_dz_ll_": "dangerzone_ll", "screen_jpeg50_": "jpeg50", "scr
 def load(run: Path, name: str) -> list[dict]:
     lay = RunLayout(run)
     p = {"defense": lay.defense_results, "clean": lay.clean_results}[name]
-    if not p.exists() and (lay.defense_jobs.exists() and any(lay.defense_jobs.glob("*.json"))):
-        aggregate(lay)           # derived tables are only built when missing, never rewritten
+    ensure_derived(lay)          # read-only: never rewrites existing tables
     return [json.loads(l) for l in p.open() if l.strip()] if p.exists() else []
 
 

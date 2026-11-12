@@ -1,0 +1,23 @@
+{
+  "_comment": "Accepted one-word answers per class for clean-task correctness against the ground-truth class. Written once, after the clean answer distribution had been seen (the model answers 'dog' for nearly every breed, so breed-level answers are not a fair test of a one-word prompt). Entries are the class name, direct synonyms, or the unambiguous category noun. Normalization: lowercase, punctuation to spaces, whitespace collapsed. Scene or part words (e.g. 'gas station', 'tower') and wrong objects are not accepted.",
+  "tench": ["tench", "fish"],
+  "Shih-Tzu": ["shih tzu", "dog", "puppy"],
+  "Rhodesian_ridgeback": ["rhodesian ridgeback", "dog", "puppy"],
+  "beagle": ["beagle", "dog", "puppy"],
+  "English_foxhound": ["english foxhound", "foxhound", "dog", "puppy"],
+  "Border_terrier": ["border terrier", "terrier", "dog", "puppy"],
+  "Australian_terrier": ["australian terrier", "terrier", "dog", "puppy"],
+  "golden_retriever": ["golden retriever", "retriever", "dog", "puppy"],
+  "English_springer": ["english springer", "english springer spaniel", "springer spaniel", "spaniel", "dog", "puppy"],
+  "Old_English_sheepdog": ["old english sheepdog", "sheepdog", "dog", "puppy"],
+  "Samoyed": ["samoyed", "dog", "puppy"],
+  "dingo": ["dingo", "dog"],
+  "cassette_player": ["cassette player", "tape player", "cassette recorder"],
+  "chain_saw": ["chain saw", "chainsaw"],
+  "church": ["church", "cathedral"],
+  "French_horn": ["french horn", "horn"],
+  "garbage_truck": ["garbage truck", "truck", "trash truck", "dump truck"],
+  "gas_pump": ["gas pump", "petrol pump", "fuel pump"],
+  "golf_ball": ["golf ball"],
+  "parachute": ["parachute"]
+}

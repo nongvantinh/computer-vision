@@ -19,13 +19,23 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.evaluation.adaptive_compare import condition_vector, run_confirmatory  # noqa: E402
 from src.evaluation.statistics import clopper_pearson  # noqa: E402
+from src.evaluation import labels as L  # noqa: E402
 
 EPS = {"e16": 0.0627450980, "e08": 0.0313725490}
 RUNS = {"jpeg50": "conf_jpeg50_", "dangerzone_ll": "conf_dz_ll_"}
 
 
+METRIC = "exact"
+
+
 def rows(path: Path) -> list[dict]:
-    return [json.loads(l) for l in path.open() if l.strip()]
+    """Rows with `target_success` set by the chosen matching tier. The files are only read."""
+    out = [json.loads(l) for l in path.open() if l.strip()]
+    if METRIC != "historical":
+        for r in out:
+            if not r.get("error"):
+                r["target_success"] = L.tiers(r["answer"], r["target"])[METRIC]
+    return out
 
 
 def main() -> int:
@@ -34,7 +44,11 @@ def main() -> int:
     ap.add_argument("--controls", default="results/runs/controls_v1")
     ap.add_argument("--plan", default="configs/analysis_plan.yaml")
     ap.add_argument("--out", default="results/confirmatory")
+    ap.add_argument("--metric", default="exact", choices=["exact", "word", "substring", "historical"],
+                    help="success criterion; exact is primary, substring/historical reproduce the original numbers")
     a = ap.parse_args()
+    global METRIC
+    METRIC = a.metric
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     plan = yaml.safe_load(Path(a.plan).read_text())
