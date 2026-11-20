@@ -197,11 +197,20 @@ equal-budget control comes before the second VLM.
   its D0 job, for 560 of 561 agreeing rows before it); read-only analysis guard (`ensure_derived`, the
   checksum tool and `docs/provenance/raw_checksums.json`); surrogate directional check (median cosine 0.993
   at 16/255 and 0.977 at 8/255 against 0.78 for identity).
-- Prepared, waiting for a Colab session: stage `cont_validate` (continuation equals an uninterrupted
-  run, pre-specified tolerances, about 3 GPU hours) then stage `obl` (500-step oblivious control, both
-  budgets, about 48 GPU hours, about 10 sessions). `obl` refuses to start unless the check passed. The
-  notebook is set to `cont_validate,obl`. After `obl_e16` finishes: local lossless sanitize, then stage
-  `obl_dz` scores it through real Dangerzone.
-- Open risks: H1 may shrink once the oblivious attack gets 500 steps; attacks are unconverged; second
-  model, adapter ablation and frequency analysis not started; literature search not done; the paper draft
-  (`docs/paper/paper.tex`) predates these corrections and will be rewritten after the evidence.
+- Continuation check ran and failed (2026-11-13, see the plan section 1.2 outcome), so the control uses
+  fresh 500-step attacks instead: runs `obl500s_e16` (19 launches) and `obl500s_e08` (11 launches),
+  stage `obl_scratch`. Both finished 2026-11-20: 200/200 attacks, 800/800 standard-defense rows
+  (D0, JPEG 90/75/50), 0 failures. Exact-match counts for the control, N=200 per defense:
+  D0 167/200 at 16/255 and 68/200 at 8/255 (against 104 and 52 for the 200-step control), JPEG 50 0/200
+  and 0/200, JPEG 75 0/200 and 0/200, JPEG 90 2/200 and 1/200. The stored `target_success` flag in the
+  new runs is still the substring tier; the exact metric is applied at analysis time, as before.
+- `analyze_confirmatory.py --controls` now takes comma-separated run dirs, so the same script runs the
+  matched-budget primary (obl500s runs) and the 200-step secondary (controls_v1). Preview with the JPEG
+  legs only (`results/confirmatory_matched_preview`): adaptive vs oblivious at equal 500 steps through
+  JPEG 50 is +21.0 points at 16/255 (42 vs 0 discordant, Holm p 1.4e-12) and +8.5 at 8/255
+  (17 vs 0, p 1.5e-05); both reject. The 500-step oblivious attack reaches 83.5% undefended at 16/255,
+  so the gap through JPEG 50 is knowledge of the defense, not attack strength. The Dangerzone legs and
+  the full six-test Holm family wait for the `obl_dz` scoring session.
+- Local lossless sanitize of `obl500s_e16` done (2026-11-20, 200 new, 0 failed) and uploaded to Drive
+  as `dz_ll/` (401 files). `obl500s_e08` sanitize started 2026-11-20 23:23 UTC+7; upload and the
+  notebook switch to `obl_dz` follow.

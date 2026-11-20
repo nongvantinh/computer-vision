@@ -7,6 +7,17 @@
 Adaptive rows come from conf_jpeg50_e{16,08} and conf_dz_ll_e{16,08}; the oblivious condition is
 `controls_v1` (the stored non-adaptive arrays scored on the stored pixels, see the screen plan,
 section 2). Every condition is scored through its real defense. Holm runs over the six tests.
+
+`--controls` accepts a comma-separated list of run directories, so the matched-budget primary
+analysis (Phase 3, plan section 1.3) uses the 500-step oblivious runs instead:
+
+    python scripts/analyze_confirmatory.py --runs results/runs \
+        --controls results/runs/obl500s_e16,results/runs/obl500s_e08 \
+        --out results/confirmatory_matched
+
+Tests whose conditions have no rows yet (the Dangerzone legs before `obl_dz` scores them) are
+skipped and reported; the Holm family covers only the tests that ran, so a run with skipped
+tests is a preview, not the registered family.
 """
 import argparse
 import csv
@@ -41,7 +52,9 @@ def rows(path: Path) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="results/runs")
-    ap.add_argument("--controls", default="results/runs/controls_v1")
+    ap.add_argument("--controls", default="results/runs/controls_v1",
+                    help="oblivious run dir(s), comma-separated; controls_v1 is the 200-step "
+                         "secondary, obl500s_e16,obl500s_e08 the matched 500-step primary")
     ap.add_argument("--plan", default="configs/analysis_plan.yaml")
     ap.add_argument("--out", default="results/confirmatory")
     ap.add_argument("--metric", default="exact", choices=["exact", "word", "substring", "historical"],
@@ -52,7 +65,9 @@ def main() -> int:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     plan = yaml.safe_load(Path(a.plan).read_text())
-    non = rows(Path(a.controls) / "defense_results.jsonl")
+    non = []
+    for cdir in a.controls.split(","):
+        non += rows(Path(cdir) / "defense_results.jsonl")
     cond, defense_of = {}, {}
     for d, prefix in RUNS.items():
         ada = []

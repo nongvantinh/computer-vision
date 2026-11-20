@@ -16,8 +16,8 @@ preferred. A null, a reversal, or an inconclusive outcome is reported as found.
 | Provenance of the 39 baseline rows | done | `docs/provenance/g5_provenance.md` |
 | Read-only analysis scripts, raw-data checksums | done | `ensure_derived`, `scripts/checksum_runs.py`, `docs/provenance/raw_checksums.json` |
 | Surrogate directional check (attack directions) | done | `scripts/surrogate_directional_check.py` |
-| Continuation-equivalence check | prepared, needs GPU | `scripts/validate_continuation.py`, stage `cont_validate` |
-| 500-step oblivious control, both budgets | prepared, needs GPU | stage `obl`, `obl_dz` |
+| Continuation-equivalence check | done, failed (section 1.2) | `scripts/validate_continuation.py`, stage `cont_validate` |
+| 500-step oblivious control, both budgets | attacks and standard defenses done; Dangerzone scoring pending | runs `obl500s_e16`, `obl500s_e08`, stage `obl_dz` |
 | Convergence and best-so-far study | designed below | section 2 |
 | Adapter-only adaptive ablation | designed below | section 3 |
 | Second VLM, mechanism, utility frontier, literature | later | sections 5 to 7 |
@@ -92,6 +92,18 @@ defenses. Cost: about 7 minutes per image, 24 GPU hours per budget, about 10 Col
 Primary H1 is then 500-step adaptive against 500-step oblivious, exact match, six tests, Holm. The
 200-step comparison stays as a secondary analysis. Whatever the outcome, including a smaller or
 insignificant effect, it replaces the current H1 claim.
+
+**Deviation and outcome (2026-11-13 to 2026-11-20).** Section 1.2 failed, so the matched control is
+not the continuation `obl500_*` runs but fresh 500-step defense-unaware attacks, runs `obl500s_e16`
+and `obl500s_e08` (stage `obl_scratch`), same seeds, prompts and model as the adaptive attacks. Both
+finished: 200/200 attacks each, 800/800 standard-defense rows, 0 failures. Exact-match control
+counts, N=200 per defense: D0 167/200 at 16/255 and 68/200 at 8/255 (the 200-step control had 104
+and 52), JPEG 50 0/200 at both budgets, JPEG 75 0/200, JPEG 90 2/200 and 1/200. Lossless Dangerzone
+scoring of the same arrays is the remaining piece (stage `obl_dz`, one Colab session); the
+Dangerzone legs of the matched H1 test and the full six-test Holm family are computed after it.
+The JPEG legs of the matched H1, exact match, N=200 paired: adaptive 42/200 vs oblivious 0/200 at
+16/255 (+21.0 points, Holm p 1.4e-12) and 17/200 vs 0/200 at 8/255 (+8.5, p 1.5e-05); both reject.
+`scripts/analyze_confirmatory.py --controls` now accepts the two control run dirs in one flag.
 
 ### 1.4 Statistical verification (done)
 Independent re-derivations: exact McNemar by direct summation, Newcombe method 10 written from the
