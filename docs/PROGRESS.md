@@ -211,6 +211,9 @@ equal-budget control comes before the second VLM.
   (17 vs 0, p 1.5e-05); both reject. The 500-step oblivious attack reaches 83.5% undefended at 16/255,
   so the gap through JPEG 50 is knowledge of the defense, not attack strength. The Dangerzone legs and
   the full six-test Holm family wait for the `obl_dz` scoring session.
-- Local lossless sanitize of `obl500s_e16` done (2026-11-20, 200 new, 0 failed) and uploaded to Drive
-  as `dz_ll/` (401 files). `obl500s_e08` sanitize started 2026-11-20 23:23 UTC+7; upload and the
-  notebook switch to `obl_dz` follow.
+- Local lossless sanitize of both control runs done (2026-11-20): `obl500s_e16` 200 new, 0 failed;
+  `obl500s_e08` 200 new, 0 failed (18 minutes). Both `dz_ll/` dirs uploaded to Drive (401 files each,
+  counts verified). The notebook is set to `obl_dz` and pushed (2a6cfdd); one Colab session scores both
+  runs through real Dangerzone (about 400 generations per run). After it: pull, rerun
+  `analyze_confirmatory.py` with `--controls obl500s_e16,obl500s_e08 --out results/confirmatory_matched`
+  for the full six-test family, which replaces the H1 claim in the paper.
