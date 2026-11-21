@@ -32,12 +32,23 @@ STAGE values
   screen_eval   defended-loss evaluation (gate G3) for the screen runs.
   screen_dz     model answers on the locally sanitized Dangerzone images of the screen
                 runs (dz/ or dz_ll/ uploaded into each screen run dir).
+  conv          convergence study (docs/phase3_plan.md section 2): both adaptive attacks
+                at 16/255 continued from the confirmatory 500-step arrays to 1000 and 2000
+                cumulative steps on configs/conv_100.json, checkpoints every 100 steps.
+                Run dirs conv_<atk>_e16_s<budget>.
+  conv_eval     score every stored checkpoint through real JPEG 50 (GPU).
+  conv_probe    two fresh random starts (seeds 1235, 1236) and the momentum+step-decay
+                optimizer variant, 25 images, fresh 500-step JPEG-50 attacks.
+                Run dirs conv_jpeg50_e16_{r1,r2,mom}.
+  conv_dz       score the locally sanitized Dangerzone checkpoints (coarse grid
+                1000/1500/2000; needs dz_ll/ckpt on Drive from the agent's local sanitize).
 """
 import json
 import os
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 STAGE = globals().get("STAGE", "controls")
 REPO_URL = globals().get("REPO_URL", "https://github.com/nongvantinh/computer-vision.git")
@@ -428,6 +439,142 @@ def stage_obl_dz():
         push(rid)
 
 
+# --- convergence study (docs/phase3_plan.md section 2) ----------------------------------
+# Both adaptive attacks at 16/255, continued from the stored confirmatory 500-step arrays
+# to 1000 and 2000 cumulative steps on the fixed 100-image subset (configs/conv_100.json;
+# rule in scripts/make_conv_manifests.py, decided before any convergence run). Every 100
+# steps a float32 checkpoint is stored under ckpt/ with cumulative labels and scored
+# through real JPEG 50 on the GPU (stage conv_eval). Real Dangerzone is scored at the
+# coarse grid 1000/1500/2000 after a LOCAL sanitize (the agent runs
+# scripts/dangerzone_sanitize.py --embed lossless --ckpt-steps 1000,1500,2000 and uploads
+# dz_ll/), then stage conv_dz scores those images. conv_probe adds two fresh random
+# starts and the momentum+step-decay optimizer variant on 25 images (configs/conv_25.json).
+CONV_MANIFEST = "configs/conv_100.json"
+CONV_PROBE_MANIFEST = "configs/conv_25.json"
+CONV_EPS = "0.062745098"
+CONV_STEPS_0 = 500                      # the stored confirmatory budget (both conf runs)
+CONV_SCHEDULE = (1000, 2000)
+CONV_CKPT_EVERY = 100
+CONV_DEFENSES = "D0,jpeg90,jpeg75,jpeg50"
+CONV_ATTACKS = (("jpeg50", "conf_jpeg50_e16"), ("dangerzone_ll", "conf_dz_ll_e16"))
+CONV_PROBES = (    # (run id, PGD seed, momentum, extra flags), fresh 500-step JPEG-50 attacks
+    ("conv_jpeg50_e16_r1", 1235, 0.0, ""),
+    ("conv_jpeg50_e16_r2", 1236, 0.0, ""),
+    ("conv_jpeg50_e16_mom", 1234, 0.9, "--step-decay"),
+)
+
+
+def _attack_done(rid, n=100):
+    """True once the run's attack finished all n images on Drive."""
+    try:
+        prog = json.load(open(f"{DRIVE_RUNS}/{rid}/progress.json"))
+        return int(prog.get("adv_images", 0)) >= n
+    except (OSError, ValueError):
+        return False
+
+
+def _conv_rid(atk, budget):
+    return f"conv_{atk}_e16_s{budget}"
+
+
+def _ckpt_jobs_scored(rid):
+    try:
+        return len(list(Path(f"{LOCAL_RUNS}/{rid}/jobs/ckpt_score").glob("*.json")))
+    except OSError:
+        return 0
+
+
+def stage_conv():
+    for atk, base_rid in CONV_ATTACKS:
+        prev_id, prev_cum = base_rid, CONV_STEPS_0
+        for budget in CONV_SCHEDULE:
+            rid = _conv_rid(atk, budget)
+            if _attack_done(rid):
+                print(f"conv: {rid} attack already complete, skipped", flush=True)
+                prev_id, prev_cum = rid, budget
+                continue
+            pull_npy(prev_id)   # the arrays this stage continues from
+            pull_npy(rid)       # resume needs the stored images, or finished jobs are redone
+            sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+               f"--manifest {CONV_MANIFEST} --adaptive-defense {atk} --epsilon {CONV_EPS} "
+               f"--steps {budget - prev_cum} --init-from {LOCAL_RUNS}/{prev_id} "
+               f"--checkpoint-every {CONV_CKPT_EVERY} --defenses {CONV_DEFENSES} "
+               f"--experiment-id {rid} --max-hours {SESSION_HOURS}", cwd=PROJECT)
+            push(rid)
+            if not _attack_done(rid):
+                print(f"conv: {rid} still incomplete; run the notebook again to resume", flush=True)
+                return
+            prev_id, prev_cum = rid, budget
+
+
+def stage_conv_eval():
+    """Score every stored checkpoint through real JPEG 50 (GPU)."""
+    for atk, _ in CONV_ATTACKS:
+        for budget in CONV_SCHEDULE:
+            rid = _conv_rid(atk, budget)
+            if not _attack_done(rid):
+                continue
+            n_expect = 100 * ((budget - CONV_STEPS_0) // CONV_CKPT_EVERY)
+            pull_npy(rid)
+            if _ckpt_jobs_scored(rid) >= n_expect:
+                print(f"conv_eval: {rid} checkpoints already scored, skipped", flush=True)
+                continue
+            sh(f"python scripts/score_checkpoints.py --run {LOCAL_RUNS}/{rid} "
+               f"--defense jpeg50 --max-hours {SESSION_HOURS}", cwd=PROJECT)
+            push(rid)
+
+
+def stage_conv_probe():
+    for rid, seed, momentum, extra in CONV_PROBES:
+        if _attack_done(rid, n=25):
+            print(f"conv_probe: {rid} already complete, skipped", flush=True)
+            continue
+        pull_npy(rid)
+        sh(f"python scripts/run_experiment.py --run-id {rid} --runs-base {LOCAL_RUNS} "
+           f"--manifest {CONV_PROBE_MANIFEST} --adaptive-defense jpeg50 "
+           f"--epsilon {CONV_EPS} --steps {CONV_STEPS_0} --attack-seed {seed} "
+           f"--momentum {momentum} {extra} --defenses {CONV_DEFENSES} "
+           f"--experiment-id {rid} --max-hours {SESSION_HOURS}", cwd=PROJECT)
+        push(rid)
+        if not _attack_done(rid, n=25):
+            print(f"conv_probe: {rid} still incomplete; run the notebook again to resume",
+                  flush=True)
+            return
+
+
+def stage_conv_dz():
+    """Score the locally sanitized Dangerzone checkpoints (coarse grid 1000/1500/2000).
+
+    Each conv run only holds the checkpoints of its own stage: s1000 has step 1000,
+    s2000 has 1500 and 2000. The expected count comes from that range, and the upload
+    must be complete before scoring starts.
+    """
+    prev_of = {CONV_SCHEDULE[0]: CONV_STEPS_0, CONV_SCHEDULE[1]: CONV_SCHEDULE[0]}
+    for atk, _ in CONV_ATTACKS:
+        for budget in CONV_SCHEDULE:
+            rid = _conv_rid(atk, budget)
+            if not _attack_done(rid):
+                continue
+            grid = [s for s in (1000, 1500, 2000) if prev_of[budget] < s <= budget]
+            n_expect = 100 * len(grid)
+            n_pngs = len(list(Path(f"{DRIVE_RUNS}/{rid}/dz_ll/ckpt").glob("*.png"))) \
+                if os.path.isdir(f"{DRIVE_RUNS}/{rid}/dz_ll/ckpt") else 0
+            if n_pngs < n_expect:
+                print(f"conv_dz: {rid} has {n_pngs} sanitized ckpt pngs on Drive, "
+                      f"expects {n_expect}; skipped (agent runs the local sanitize first)",
+                      flush=True)
+                continue
+            pull_npy(rid)
+            scored = sum(1 for jp in Path(f"{LOCAL_RUNS}/{rid}/jobs/ckpt_score").glob("*.json")
+                         if "dangerzone_ll" in jp.name)
+            if scored >= n_expect:
+                print(f"conv_dz: {rid} Dangerzone checkpoints already scored, skipped", flush=True)
+                continue
+            sh(f"python scripts/score_checkpoints.py --run {LOCAL_RUNS}/{rid} "
+               f"--dz-dir {DRIVE_RUNS}/{rid}/dz_ll --max-hours {SESSION_HOURS}", cwd=PROJECT)
+            push(rid)
+
+
 def stage_analysis():
     pull(RUN_ID)
     sh(f"python scripts/run_analysis.py --run {LOCAL_RUNS}/{RUN_ID}", cwd=PROJECT)
@@ -440,7 +587,8 @@ STAGES = {"controls": stage_controls, "dz_answers": stage_dz_answers, "pilot": s
           "screen_eval": stage_screen_eval, "screen_dz": stage_screen_dz,
           "conf": stage_conf, "conf_eval": stage_conf_eval, "conf_dz": stage_conf_dz,
           "cont_validate": stage_cont_validate, "obl": stage_obl, "obl_scratch": stage_obl_scratch,
-          "obl_dz": stage_obl_dz}
+          "obl_dz": stage_obl_dz, "conv": stage_conv, "conv_eval": stage_conv_eval,
+          "conv_probe": stage_conv_probe, "conv_dz": stage_conv_dz}
 
 todo = [s.strip() for s in STAGE.split(",") if s.strip()]
 bad = [s for s in todo if s not in STAGES]

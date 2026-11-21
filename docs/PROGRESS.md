@@ -230,3 +230,15 @@ equal-budget control comes before the second VLM.
   it. This replaces the H1 claim based on the 200-step control, which stays as the secondary analysis
   (`results/confirmatory`). The H1 conclusion is unchanged by the budget match: the oblivious attacker
   reaches 83.5% undefended at 16/255 and still 0/200 through JPEG 50 and 1/200 through Dangerzone.
+- Section 2 (convergence) implemented (2026-11-21), all rules fixed before the first run
+  (plan section 2 has the parameters). `configs/conv_100.json` and `conv_25.json`
+  (`scripts/make_conv_manifests.py`, rng 4321). PGD stores checkpoints every 100 steps with
+  cumulative labels and supports the momentum+step-decay variant (`src/attacks/targeted_pgd.py`,
+  `--checkpoint-every/--momentum/--step-decay/--attack-seed` in `scripts/run_experiment.py`).
+  Stages `conv` (500 then 1000 more steps from the confirmatory arrays, JPEG 50 attack first),
+  `conv_eval` (every checkpoint through real JPEG 50), `conv_probe` (two fresh seeds plus the
+  variant, 25 images), `conv_dz` (coarse Dangerzone grid 1000/1500/2000 after a local sanitize).
+  `scripts/score_checkpoints.py`, `scripts/analyze_convergence.py` (final-iterate vs best-so-far,
+  lost successes, the 15-point decision rule, probe arms). 186 tests pass. The notebook is set to
+  `conv_eval,conv,conv_probe`; about 150 GPU hours, about 33 sessions. The operator runs the same
+  notebook repeatedly; `conv_dz` is queued later, after the local sanitize of the completed runs.

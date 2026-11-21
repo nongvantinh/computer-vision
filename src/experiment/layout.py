@@ -68,7 +68,11 @@ class RunLayout:
     @property
     def defense_jobs(self) -> Path: return self.root / "jobs" / "defense"
     @property
+    def ckpt_score_jobs(self) -> Path: return self.root / "jobs" / "ckpt_score"
+    @property
     def adv(self) -> Path: return self.root / "adv"
+    @property
+    def ckpt(self) -> Path: return self.root / "ckpt"
     @property
     def examples(self) -> Path: return self.root / "examples"
     @property
@@ -77,6 +81,8 @@ class RunLayout:
     # derived result files
     @property
     def clean_results(self) -> Path: return self.root / "clean_results.jsonl"
+    @property
+    def ckpt_results(self) -> Path: return self.root / "ckpt_results.jsonl"
     @property
     def attack_results(self) -> Path: return self.root / "attack_results.jsonl"
     @property

@@ -64,6 +64,15 @@ def main() -> int:
                     help="label stored in config.json meta (e.g. controls_v1)")
     ap.add_argument("--defenses", default=None,
                     help="comma-separated defense override, e.g. D0,jpeg90,dangerzone")
+    ap.add_argument("--momentum", type=float, default=0.0,
+                    help="PGD momentum for the optimizer-variant runs (0 = registered sign update)")
+    ap.add_argument("--step-decay", action="store_true",
+                    help="decay the step size linearly to zero over the run (optimizer variant)")
+    ap.add_argument("--checkpoint-every", type=int, default=0,
+                    help="store the projected iterate every N steps under ckpt/ "
+                         "(cumulative step labels when continuing with --init-from)")
+    ap.add_argument("--attack-seed", type=int, default=None,
+                    help="override the PGD random-start seed (restart-variance runs)")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
@@ -94,7 +103,10 @@ def main() -> int:
             "model_key": cfg["model"]["model_id"],
             "attack_source": str(args.attack_source) if args.attack_source else None,
             "init_from": str(args.init_from) if args.init_from else None,
-            "manifest": cfg["dataset"]["manifest"]}
+            "manifest": cfg["dataset"]["manifest"],
+            "momentum": args.momentum, "step_decay": args.step_decay,
+            "checkpoint_every": args.checkpoint_every,
+            "attack_seed": args.attack_seed if args.attack_seed is not None else cfg["seed"]}
     if args.resume:
         lay = load_run(args.run_id, base=base)
         create_run(args.run_id, cfg, acfg, cfg["dataset"]["manifest"], base=base, meta=meta)
@@ -129,7 +141,10 @@ def main() -> int:
                    pgd_random_start=acfg["random_start"], seed=cfg["seed"],
                    image_size=size, max_new_tokens=mnt, deadline=deadline,
                    limit=args.limit, attack_source=attack_source,
-                   attack_defense=attack_defense, init_source=init_source)
+                   attack_defense=attack_defense, init_source=init_source,
+                   pgd_momentum=args.momentum, pgd_step_decay=args.step_decay,
+                   checkpoint_every=args.checkpoint_every,
+                   attack_seed=args.attack_seed)
 
     summary = aggregate(lay)
     log.info("coverage: %s", summary)

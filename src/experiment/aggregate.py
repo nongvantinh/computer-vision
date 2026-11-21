@@ -31,14 +31,16 @@ def _collect(job_dir: Path) -> list[dict]:
 
 
 def aggregate(lay: RunLayout) -> dict:
-    """Collate clean/attack/defense jobs into the derived JSONL tables + coverage."""
+    """Collate clean/attack/defense (+ checkpoint-score) jobs into the derived tables."""
     clean = _collect(lay.clean_jobs)
     attack = _collect(lay.attack_jobs)
     defense = _collect(lay.defense_jobs)
+    ckpt_score = _collect(lay.ckpt_score_jobs)
 
     _write_jsonl(lay.clean_results, clean)
     _write_jsonl(lay.attack_results, attack)
     _write_jsonl(lay.defense_results, defense)
+    _write_jsonl(lay.ckpt_results, ckpt_score)
 
     ok_defense = [r for r in defense if not r.get("error")]
     failed_defense = [r for r in defense if r.get("error")]
@@ -55,6 +57,8 @@ def aggregate(lay: RunLayout) -> dict:
         "n_defense_jobs": len(defense),
         "n_defense_ok": len(ok_defense),
         "n_defense_failed": len(failed_defense),
+        "n_ckpt_score_jobs": len(ckpt_score),
+        "n_ckpt_score_failed": sum(1 for r in ckpt_score if r.get("error")),
         "adv_images": len(list(lay.adv.glob("*.npy"))),
         "epsilons": sorted({r["epsilon"] for r in attack if "epsilon" in r}),
         "defenses_seen": sorted(by_defense),

@@ -69,6 +69,52 @@ def adv_hash(adv: np.ndarray) -> str:
     return hashlib.sha256(np.ascontiguousarray(adv, dtype=np.float32).tobytes()).hexdigest()
 
 
+# --- attack checkpoints (docs/phase3_plan.md section 2) ------------------------------ #
+
+def ckpt_path(lay: RunLayout, image_id: str, eps: float, step: int) -> Path:
+    """Lossless .npy of the projected iterate at a CUMULATIVE step count."""
+    return lay.ckpt / f"{sanitize_id(image_id)}__{_eps_tag(eps)}__s{int(step)}.npy"
+
+
+def ckpt_score_job_path(lay: RunLayout, image_id: str, eps: float, step: int,
+                        defense: str) -> Path:
+    return lay.ckpt_score_jobs / f"{sanitize_id(image_id)}__{_eps_tag(eps)}__s{int(step)}__{defense}.json"
+
+
+def save_ckpt_image(lay: RunLayout, image_id: str, eps: float, step: int,
+                    adv: np.ndarray) -> Path:
+    """Persist one checkpoint iterate (float32 .npy, atomic). No .png: checkpoints are
+    scored from the arrays and the volume is 15 per image per attack stage."""
+    npy = ckpt_path(lay, image_id, eps, step)
+    npy.parent.mkdir(parents=True, exist_ok=True)
+    tmp = npy.parent / (npy.name + ".tmp")
+    with open(tmp, "wb") as f:
+        np.save(f, np.asarray(adv, dtype=np.float32))
+    tmp.replace(npy)
+    return npy
+
+
+def load_ckpt_image(lay: RunLayout, image_id: str, eps: float, step: int) -> np.ndarray | None:
+    npy = ckpt_path(lay, image_id, eps, step)
+    if not npy.exists():
+        return None
+    return np.load(npy).astype(np.float32)
+
+
+def list_ckpt_steps(lay: RunLayout, image_id: str, eps: float) -> list[int]:
+    """Sorted cumulative step counts stored for one (image, epsilon)."""
+    if not lay.ckpt.exists():
+        return []
+    prefix = f"{sanitize_id(image_id)}__{_eps_tag(eps)}__s"
+    out = []
+    for p in lay.ckpt.glob(f"{prefix}*.npy"):
+        try:
+            out.append(int(p.stem[len(prefix):]))
+        except ValueError:
+            continue
+    return sorted(out)
+
+
 def load_adv_image(lay: RunLayout, image_id: str, eps: float) -> np.ndarray | None:
     npy, _ = adv_artifact_paths(lay, image_id, eps)
     if not npy.exists():
@@ -97,4 +143,6 @@ def count_jobs(lay: RunLayout) -> dict:
 
 __all__ = ["clean_job_path", "attack_job_path", "defense_job_path",
            "adv_artifact_paths", "save_adv_image", "adv_hash", "load_adv_image",
-           "read_attack_meta", "update_progress", "count_jobs", "is_done"]
+           "read_attack_meta", "update_progress", "count_jobs", "is_done",
+           "ckpt_path", "ckpt_score_job_path", "save_ckpt_image", "load_ckpt_image",
+           "list_ckpt_steps"]

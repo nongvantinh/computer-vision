@@ -72,7 +72,9 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                    epsilons, pgd_steps, pgd_step_size, pgd_random_start, seed,
                    image_size=336, max_new_tokens=16,
                    deadline=None, limit=None, attack_source=None,
-                   attack_defense=None, init_source=None) -> dict:
+                   attack_defense=None, init_source=None,
+                   pgd_momentum=0.0, pgd_step_decay=False, checkpoint_every=0,
+                   attack_seed=None) -> dict:
     """Run clean + attack + defense jobs, image by image, resumably.
 
     `attack_source` (a RunLayout) makes this a defense-only run: adversarial images
@@ -87,6 +89,12 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
     from that run's stored adversarial image and takes `pgd_steps` MORE steps. The attack
     job records the cumulative step count, so staged budgets (200, 500, 1000, ...) stay
     traceable and the earlier run is never modified.
+
+    `pgd_momentum` / `pgd_step_decay` select the pre-specified optimizer variant
+    (docs/phase3_plan.md section 2); defaults reproduce the registered constant-step
+    sign update. `checkpoint_every > 0` stores the projected iterate every N steps under
+    ckpt/ with CUMULATIVE step labels (earlier stages' steps included), for the
+    convergence study. `attack_seed` overrides the PGD seed for restart-variance runs.
     """
     ref_cache: dict = {}
     made = {"clean": 0, "attack": 0, "defense": 0, "defense_failed": 0,
@@ -161,11 +169,18 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                 r = targeted_pgd(model, clean, ds.prompt, s.target_class_name,
                                  PGDConfig(epsilon=eps, steps=pgd_steps,
                                            step_size=pgd_step_size,
-                                           random_start=pgd_random_start, seed=seed,
-                                           init_adv=init),
+                                           random_start=pgd_random_start,
+                                           seed=seed if attack_seed is None else attack_seed,
+                                           init_adv=init,
+                                           momentum=pgd_momentum,
+                                           step_decay=pgd_step_decay,
+                                           checkpoint_every=checkpoint_every),
                                  defense=attack_defense)
                 adv = r.adv_image
                 store.save_adv_image(lay, s.image_id, eps, clean, adv)
+                if r.checkpoints:
+                    for t_local, arr in r.checkpoints:
+                        store.save_ckpt_image(lay, s.image_id, eps, steps_before + t_local, arr)
                 atomic_write_json(ajp, {
                     "image_id": s.image_id, "class": s.class_name,
                     "target": s.target_class_name, "epsilon": eps,
@@ -174,6 +189,10 @@ def run_experiment(model, ds, defenses: dict, lay: RunLayout, *,
                     "steps": pgd_steps, "step_size": pgd_step_size,
                     "steps_cumulative": steps_before + pgd_steps,
                     "init_from": str(init_source.root) if init_source is not None else None,
+                    "momentum": pgd_momentum, "step_decay": pgd_step_decay,
+                    "attack_seed": seed if attack_seed is None else attack_seed,
+                    "checkpoint_every": checkpoint_every,
+                    "checkpoints": [steps_before + t for t, _ in r.checkpoints] if r.checkpoints else [],
                     "adv_sha256": store.adv_hash(adv),
                     "loss_curve": [round(float(v), 4) for v in r.losses],
                     "loss_first": r.losses[0] if r.losses else None,

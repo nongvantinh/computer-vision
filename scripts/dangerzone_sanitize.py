@@ -45,6 +45,9 @@ def main() -> int:
     ap.add_argument("--embed", choices=["jpeg", "lossless"], default="jpeg",
                     help="how the image enters the PDF: 'jpeg' is the legacy baseline "
                          "adapter (contains a JPEG 75), 'lossless' embeds it byte-exact")
+    ap.add_argument("--ckpt-steps", default="",
+                    help="comma-separated cumulative checkpoint steps to also sanitize "
+                         "from ckpt/*.npy (convergence study, docs/phase3_plan.md 2)")
     args = ap.parse_args()
     lay = RunLayout(Path(args.run))
     dz_dir = lay.root / ("dz" if args.embed == "jpeg" else "dz_ll")
@@ -106,6 +109,55 @@ def main() -> int:
             f.write(json.dumps(rec) + "\n")
     log.info("sanitized: %d new, %d already done, %d failed. Wrote %s",
              made, done, failed, dz_dir)
+
+    # --- convergence checkpoints: coarse grid only (docs/phase3_plan.md section 2) --- #
+    ckpt_steps = [int(s) for s in args.ckpt_steps.split(",") if s.strip()]
+    if ckpt_steps:
+        from src.experiment.store import list_ckpt_steps, load_ckpt_image
+        ckpt_dir = dz_dir / "ckpt"
+        ckpt_dir.mkdir(parents=True, exist_ok=True)
+        ck_sidecar, made_c, done_c, failed_c = [], 0, 0, 0
+        for r in rows:
+            iid, eps = r["image_id"], r["epsilon"]
+            sid = sanitize_id(iid)
+            have = set(list_ckpt_steps(lay, iid, eps))
+            clean = _load_png(lay.examples / f"{sid}_clean.png")
+            defended_clean = _load_png(dz_dir / f"{sid}__clean.png") \
+                if (dz_dir / f"{sid}__clean.png").exists() else None
+            for step in ckpt_steps:
+                if step not in have:
+                    continue
+                out_png = ckpt_dir / f"{sid}__eps{eps:.4f}__s{step}.png"
+                rec = {"image_id": iid, "epsilon": eps, "sid": sid, "ckpt_step": step,
+                       "ckpt_sanitized": out_png.name}
+                arr = load_ckpt_image(lay, iid, eps, step)
+                if arr is None:
+                    continue
+                try:
+                    if is_done(out_png):
+                        done_c += 1
+                    else:
+                        t0 = time.perf_counter()
+                        dz_img = defense.sanitize(arr)
+                        array_to_pil(dz_img.image).save(out_png)
+                        rec["runtime_s"] = time.perf_counter() - t0
+                        made_c += 1
+                    if defended_clean is not None:
+                        defended = _load_png(out_png)
+                        rec["mechanism"] = analyze_defense_controlled(
+                            clean, arr, defended_clean, defended)
+                        rec["psnr_vs_clean"] = psnr(clean, defended)
+                        rec["ssim_vs_clean"] = ssim(clean, defended)
+                    ck_sidecar.append(rec)
+                except Exception as e:
+                    failed_c += 1
+                    log.error("Dangerzone failed on ckpt %s s=%d: %s", iid, step, e)
+                    ck_sidecar.append({**rec, "error": repr(e)})
+        with (dz_dir / "ckpt_sidecar.jsonl").open("w") as f:
+            for rec in ck_sidecar:
+                f.write(json.dumps(rec) + "\n")
+        log.info("checkpoints sanitized: %d new, %d already done, %d failed. Wrote %s",
+                 made_c, done_c, failed_c, ckpt_dir)
     log.info("next (on the GPU host): move %s to the run dir there, then "
              "python scripts/dangerzone_finalize.py --run <run>", dz_dir)
     return 0 if failed == 0 else 1
