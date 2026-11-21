@@ -105,6 +105,16 @@ The JPEG legs of the matched H1, exact match, N=200 paired: adaptive 42/200 vs o
 16/255 (+21.0 points, Holm p 1.4e-12) and 17/200 vs 0/200 at 8/255 (+8.5, p 1.5e-05); both reject.
 `scripts/analyze_confirmatory.py --controls` now accepts the two control run dirs in one flag.
 
+**Outcome completed (2026-11-20).** The `obl_dz` session scored both control runs through real
+Dangerzone (200/200 rows each, 0 failures; the 500-step oblivious attack succeeds on 1/200 at both
+budgets). The full six-test family at matched budget (`results/confirmatory_matched`, exact metric,
+Holm, nothing skipped): JPEG 50 +8.5 at 8/255 (17 vs 0, p 1.5e-05) and +21.0 at 16/255 (42 vs 0,
+p 1.4e-12); Dangerzone lossless +27.5 at 8/255 (56 vs 1, p 2.2e-16) and +72.5 at 16/255 (146 vs 1,
+p 2.7e-43); Dangerzone minus JPEG 50 under adaptive attack +19.5 and +52.0. All six reject. The
+8/255 JPEG adaptivity effect stays below the 15-point MEI (interval +4.9 to +13.2); the other five
+exceed it. This is the primary H1 result; the 200-step comparison (`results/confirmatory`) is the
+secondary. Section 2 can now be sized.
+
 ### 1.4 Statistical verification (done)
 Independent re-derivations: exact McNemar by direct summation, Newcombe method 10 written from the
 paper's formulas, a bootstrap cross-check, simulated coverage of the paired interval (nominal 95%),

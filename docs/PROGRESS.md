@@ -217,3 +217,16 @@ equal-budget control comes before the second VLM.
   runs through real Dangerzone (about 400 generations per run). After it: pull, rerun
   `analyze_confirmatory.py` with `--controls obl500s_e16,obl500s_e08 --out results/confirmatory_matched`
   for the full six-test family, which replaces the H1 claim in the paper.
+- `obl_dz` scoring session done (2026-11-20): both runs 200/200 dangerzone_ll rows, 0 failures
+  (`defense_results.jsonl` now 1000 rows per run, local and Drive md5 equal). The 500-step oblivious
+  attack through real lossless Dangerzone succeeds on 1/200 at both budgets (exact and substring).
+- **Matched-budget primary analysis complete** (`results/confirmatory_matched`, exact metric, N=200
+  paired, Holm over the six tests, nothing skipped). Adaptive vs oblivious at equal 500 steps through
+  the real defense: JPEG 50 +8.5 points at 8/255 (17 vs 0, p 1.5e-05) and +21.0 at 16/255
+  (42 vs 0, p 1.4e-12); lossless Dangerzone +27.5 at 8/255 (56 vs 1, p 2.2e-16) and +72.5 at 16/255
+  (146 vs 1, p 2.7e-43). Dangerzone minus JPEG 50 under adaptive attack: +19.5 at 8/255 and +52.0 at
+  16/255. All six reject. Caveat carried over: the 8/255 JPEG adaptivity effect is significant but its
+  interval (+4.9 to +13.2) lies below the 15-point minimum effect of interest; the other five exceed
+  it. This replaces the H1 claim based on the 200-step control, which stays as the secondary analysis
+  (`results/confirmatory`). The H1 conclusion is unchanged by the budget match: the oblivious attacker
+  reaches 83.5% undefended at 16/255 and still 0/200 through JPEG 50 and 1/200 through Dangerzone.
